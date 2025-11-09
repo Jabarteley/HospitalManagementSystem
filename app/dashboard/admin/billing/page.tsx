@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Activity, CreditCard } from 'lucide-react'
-import AdminLayout from './layout'
+import AdminLayout from '../layout'
 
 export default function AdminBillingPage() {
   const { data: session, status } = useSession()

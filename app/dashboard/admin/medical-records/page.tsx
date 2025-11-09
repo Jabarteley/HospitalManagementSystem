@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Activity } from 'lucide-react'
-import AdminLayout from './layout'
+import AdminLayout from '../layout'
 
 export default function AdminMedicalRecordsPage() {
   const { data: session, status } = useSession()

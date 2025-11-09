@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Activity, FileText } from 'lucide-react'
-import AdminLayout from './layout'
+import AdminLayout from '../layout'
 
 export default function AdminAuditLogsPage() {
   const { data: session, status } = useSession()

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Users, Plus, Edit, Trash2, Activity } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import AdminLayout from './layout'
+import AdminLayout from '../layout'
 
 export default function AdminUsersPage() {
   const { data: session, status } = useSession()
@@ -114,7 +114,7 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <AdminLayout title="User Management" subtitle="Manage doctors, pharmacists, and other staff">
+    <div>
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-gray-900 mb-2">
           Admin Dashboard - User Management
@@ -369,6 +369,6 @@ export default function AdminUsersPage() {
           </div>
         )}
       </div>
-    </AdminLayout>
+    </div>
   )
 }

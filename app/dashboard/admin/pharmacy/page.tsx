@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Activity, Pill, Package } from 'lucide-react'
-import AdminLayout from './layout'
+import AdminLayout from '../layout'
 
 export default function AdminPharmacyPage() {
   const { data: session, status } = useSession()

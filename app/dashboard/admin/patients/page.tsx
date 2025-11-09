@@ -4,7 +4,7 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Activity } from 'lucide-react'
-import AdminLayout from './layout'
+import AdminLayout from '../layout'
 
 export default function AdminPatientsPage() {
   const { data: session, status } = useSession()
@@ -58,7 +58,7 @@ export default function AdminPatientsPage() {
   }
 
   return (
-    <AdminLayout title="Patient Management" subtitle="Manage patient records and profiles">
+    <div>
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-gray-900 mb-2">Patient Management</h2>
         <p className="text-gray-600">Manage patient records and profiles</p>
@@ -128,6 +128,6 @@ export default function AdminPatientsPage() {
           </div>
         )}
       </div>
-    </AdminLayout>
+    </div>
   )
 }
