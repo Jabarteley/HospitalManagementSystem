@@ -115,6 +115,15 @@ export default function DashboardPage() {
               href="/pharmacy"
             />
           )}
+
+          {session.user.role === 'admin' && (
+            <DashboardCard
+              icon={<Users className="w-8 h-8" />}
+              title="User Management"
+              description="Manage doctors, pharmacists and staff"
+              href="/dashboard/admin/users"
+            />
+          )}
         </div>
 
         <div className="mt-12 p-6 bg-blue-50 border border-blue-200 rounded-lg">

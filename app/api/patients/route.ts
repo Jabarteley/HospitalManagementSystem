@@ -2,69 +2,63 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import dbConnect from '@/lib/mongodb'
 import Patient from '@/models/Patient'
+import User from '@/models/User'
 import { requireAuth } from '@/lib/session'
 import { createAuditLog } from '@/utils/auditLogger'
 
 const createPatientSchema = z.object({
-  userId: z.string(),
+  firstName: z.string().min(1, 'First name is required'),
+  lastName: z.string().min(1, 'Last name is required'),
+  email: z.string().email('Invalid email address'),
+  phone: z.string().optional(),
   dateOfBirth: z.string(),
   gender: z.enum(['male', 'female', 'other']),
   bloodGroup: z.string().optional(),
   address: z.object({
-    street: z.string(),
-    city: z.string(),
-    state: z.string(),
-    zipCode: z.string(),
-    country: z.string(),
+    street: z.string().min(1, 'Street is required'),
+    city: z.string().min(1, 'City is required'),
+    state: z.string().min(1, 'State is required'),
+    zipCode: z.string().min(1, 'Zip code is required'),
+    country: z.string().min(1, 'Country is required'),
   }),
   emergencyContact: z.object({
-    name: z.string(),
-    relationship: z.string(),
-    phone: z.string(),
+    name: z.string().min(1, 'Emergency contact name is required'),
+    relationship: z.string().min(1, 'Relationship is required'),
+    phone: z.string().min(1, 'Emergency contact phone is required'),
   }),
-  medicalHistory: z.array(z.string()).default([]),
-  allergies: z.array(z.string()).default([]),
-  chronicConditions: z.array(z.string()).default([]),
-  currentMedications: z.array(z.string()).default([]),
+  medicalHistory: z.array(z.string()).optional(),
+  allergies: z.array(z.string()).optional(),
+  chronicConditions: z.array(z.string()).optional(),
+  currentMedications: z.array(z.string()).optional(),
   insuranceDetails: z.object({
-    provider: z.string(),
-    policyNumber: z.string(),
-    expiryDate: z.string(),
+    provider: z.string().optional(),
+    policyNumber: z.string().optional(),
+    expiryDate: z.string().optional(),
   }).optional(),
+  createdBy: z.string(),
 })
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await requireAuth(['admin', 'doctor'])
+    const user = await requireAuth(['admin', 'doctor', 'nurse'])
 
     await dbConnect()
 
-    let patients
+    const patients = await Patient.find({})
+      .populate('userId', 'email firstName lastName phone')
+      .populate('createdBy', 'firstName lastName email')
+      .sort({ createdAt: -1 })
 
-    if (user.role === 'admin') {
-      patients = await Patient.find()
-        .populate('userId', 'firstName lastName email phone')
-        .sort({ createdAt: -1 })
-        .limit(100)
-    } else if (user.role === 'doctor') {
-      const Doctor = (await import('@/models/Doctor')).default
-      const MedicalRecord = (await import('@/models/MedicalRecord')).default
-      
-      const doctor = await Doctor.findOne({ userId: user.id })
-      
-      if (!doctor) {
-        return NextResponse.json({ patients: [] }, { status: 200 })
-      }
+    // Map to include user data directly in the patient object
+    const patientsWithUserData = patients.map(patient => ({
+      ...patient.toObject(),
+      email: patient.userId?.email,
+      firstName: patient.userId?.firstName,
+      lastName: patient.userId?.lastName,
+      phone: patient.userId?.phone,
+    }))
 
-      const medicalRecords = await MedicalRecord.find({ doctorId: doctor._id }).distinct('patientId')
-
-      patients = await Patient.find({ _id: { $in: medicalRecords } })
-        .populate('userId', 'firstName lastName email phone')
-        .sort({ createdAt: -1 })
-        .limit(100)
-    }
-
-    return NextResponse.json({ patients }, { status: 200 })
+    return NextResponse.json({ patients: patientsWithUserData }, { status: 200 })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Forbidden') {
       return NextResponse.json({ error: error.message }, { status: 403 })
@@ -80,31 +74,47 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const user = await requireAuth(['admin', 'doctor', 'patient'])
+    const user = await requireAuth(['admin', 'nurse'])
 
     const body = await req.json()
     const validatedData = createPatientSchema.parse(body)
 
     await dbConnect()
 
-    const existingPatient = await Patient.findOne({ userId: validatedData.userId })
-    if (existingPatient) {
+    // Check if user with this email already exists
+    let existingUser = await User.findOne({ email: validatedData.email })
+    
+    if (existingUser) {
       return NextResponse.json(
-        { error: 'Patient profile already exists' },
+        { error: 'A user with this email already exists' },
         { status: 400 }
       )
     }
 
+    // Create a new user account for the patient
+    const patientUser = await User.create({
+      email: validatedData.email,
+      password: 'TempPass123!', // Default temporary password
+      role: 'patient',
+      firstName: validatedData.firstName,
+      lastName: validatedData.lastName,
+      phone: validatedData.phone,
+    })
+
+    // Create patient profile
     const patient = await Patient.create({
-      ...validatedData,
+      userId: patientUser._id,
       dateOfBirth: new Date(validatedData.dateOfBirth),
-      insuranceDetails: validatedData.insuranceDetails
-        ? {
-            ...validatedData.insuranceDetails,
-            expiryDate: new Date(validatedData.insuranceDetails.expiryDate),
-          }
-        : undefined,
-      createdBy: user.id,
+      gender: validatedData.gender,
+      bloodGroup: validatedData.bloodGroup,
+      address: validatedData.address,
+      emergencyContact: validatedData.emergencyContact,
+      medicalHistory: validatedData.medicalHistory || [],
+      allergies: validatedData.allergies || [],
+      chronicConditions: validatedData.chronicConditions || [],
+      currentMedications: validatedData.currentMedications || [],
+      insuranceDetails: validatedData.insuranceDetails,
+      createdBy: validatedData.createdBy,
     })
 
     await createAuditLog({
@@ -112,14 +122,23 @@ export async function POST(req: NextRequest) {
       userRole: user.role,
       action: 'CREATE',
       entity: 'Patient',
-      entityId: patient._id as any,
-      description: `New patient profile created`,
+      entityId: patient._id,
+      description: `New patient registered: ${patientUser.firstName} ${patientUser.lastName}`,
       ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || undefined,
       userAgent: req.headers.get('user-agent') || undefined,
     })
 
     return NextResponse.json(
-      { message: 'Patient created successfully', patient },
+      { 
+        message: 'Patient created successfully', 
+        patient: {
+          ...patient.toObject(),
+          firstName: patientUser.firstName,
+          lastName: patientUser.lastName,
+          email: patientUser.email,
+          phone: patientUser.phone,
+        }
+      },
       { status: 201 }
     )
   } catch (error: any) {

@@ -125,23 +125,13 @@ export default function RegisterPage() {
               }
             />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Role
-              </label>
-              <select
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                value={formData.role}
-                onChange={(e) =>
-                  setFormData({ ...formData, role: e.target.value })
-                }
-              >
-                <option value="patient">Patient</option>
-                <option value="doctor">Doctor</option>
-                <option value="pharmacist">Pharmacist</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
+            <input
+              type="hidden"
+              value="patient"
+              onChange={(e) =>
+                setFormData({ ...formData, role: e.target.value })
+              }
+            />
 
             <Input
               label="Password"
