@@ -19,23 +19,48 @@ const createMedicalRecordSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await requireAuth(['admin', 'doctor'])
+    const user = await requireAuth(['admin', 'doctor', 'patient'])
 
     await dbConnect()
 
     let query: any = {}
 
     if (user.role === 'doctor') {
-      query.doctorId = user.id // Doctors can only see their own records
+      query.doctorId = user.id // Doctors can only see records they created
+    } else if (user.role === 'patient') {
+      // Patients can only see their own records
+      const Patient = (await import('@/models/Patient')).default
+      const patient = await Patient.findOne({ userId: user.id })
+      if (!patient) {
+        return NextResponse.json({ records: [] }, { status: 200 })
+      }
+      query.patientId = patient._id
     }
 
     const records = await MedicalRecord.find(query)
-      .populate('patientId', 'firstName lastName email')
-      .populate('doctorId', 'firstName lastName email')
+      .populate('patientId', 'userId')
+      .populate('doctorId', 'userId')
       .populate('appointmentId', 'appointmentDate reason')
       .sort({ visitDate: -1 })
 
-    return NextResponse.json({ records }, { status: 200 })
+    // Add patient and doctor names to the response
+    const recordsWithNames = await Promise.all(records.map(async (record) => {
+      // Fetch patient details
+      const patient = await Patient.findById(record.patientId)
+        .populate('userId', 'firstName lastName email')
+      
+      // Fetch doctor details
+      const doctor = await Doctor.findById(record.doctorId)
+        .populate('userId', 'firstName lastName email')
+      
+      return {
+        ...record.toObject(),
+        patient: patient?.userId,
+        doctor: doctor?.userId,
+      }
+    }))
+
+    return NextResponse.json({ records: recordsWithNames }, { status: 200 })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Forbidden') {
       return NextResponse.json({ error: error.message }, { status: 403 })

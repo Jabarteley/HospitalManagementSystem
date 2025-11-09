@@ -28,13 +28,13 @@ export default function PatientsPage() {
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/login')
-    } else if (status === 'authenticated' && !['admin', 'doctor', 'nurse'].includes(session.user.role)) {
+    } else if (status === 'authenticated' && !['admin', 'doctor', 'nurse', 'patient'].includes(session.user.role)) {
       router.push('/dashboard')
     }
   }, [status, router, session])
 
   useEffect(() => {
-    if (session?.user?.role && ['admin', 'doctor', 'nurse'].includes(session.user.role)) {
+    if (session?.user?.role && ['admin', 'doctor', 'nurse', 'patient'].includes(session.user.role)) {
       fetchPatients()
     }
   }, [session])

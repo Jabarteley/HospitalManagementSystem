@@ -40,25 +40,45 @@ const createPatientSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await requireAuth(['admin', 'doctor', 'nurse'])
+    const user = await requireAuth(['admin', 'doctor', 'nurse', 'patient'])
 
     await dbConnect()
 
-    const patients = await Patient.find({})
-      .populate('userId', 'email firstName lastName phone')
-      .populate('createdBy', 'firstName lastName email')
-      .sort({ createdAt: -1 })
+    let query: any = {}
 
-    // Map to include user data directly in the patient object
-    const patientsWithUserData = patients.map(patient => ({
-      ...patient.toObject(),
-      email: patient.userId?.email,
-      firstName: patient.userId?.firstName,
-      lastName: patient.userId?.lastName,
-      phone: patient.userId?.phone,
-    }))
+    if (user.role === 'patient') {
+      // Patients can only see their own profile
+      const patientProfile = await Patient.findOne({ userId: user.id })
+        .populate('userId', 'email firstName lastName phone')
+        .populate('createdBy', 'firstName lastName email')
+      
+      const patientsWithUserData = patientProfile ? [{
+        ...patientProfile.toObject(),
+        email: patientProfile.userId?.email,
+        firstName: patientProfile.userId?.firstName,
+        lastName: patientProfile.userId?.lastName,
+        phone: patientProfile.userId?.phone,
+      }] : []
+      
+      return NextResponse.json({ patients: patientsWithUserData }, { status: 200 })
+    } else {
+      // Admins, doctors, and nurses can see all patients
+      const patients = await Patient.find({})
+        .populate('userId', 'email firstName lastName phone')
+        .populate('createdBy', 'firstName lastName email')
+        .sort({ createdAt: -1 })
 
-    return NextResponse.json({ patients: patientsWithUserData }, { status: 200 })
+      // Map to include user data directly in the patient object
+      const patientsWithUserData = patients.map(patient => ({
+        ...patient.toObject(),
+        email: patient.userId?.email,
+        firstName: patient.userId?.firstName,
+        lastName: patient.userId?.lastName,
+        phone: patient.userId?.phone,
+      }))
+
+      return NextResponse.json({ patients: patientsWithUserData }, { status: 200 })
+    }
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Forbidden') {
       return NextResponse.json({ error: error.message }, { status: 403 })

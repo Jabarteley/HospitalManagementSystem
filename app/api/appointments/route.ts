@@ -17,7 +17,7 @@ const createAppointmentSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await requireAuth(['admin', 'doctor', 'patient'])
+    const user = await requireAuth(['admin', 'doctor', 'patient', 'nurse'])
 
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status')
@@ -41,18 +41,36 @@ export async function GET(req: NextRequest) {
       }
       query.doctorId = doctor._id
     }
+    // Admins and nurses can see all appointments or we can limit nurses to only see appointments for patients they're managing
 
     if (status) {
       query.status = status
     }
 
     const appointments = await Appointment.find(query)
-      .populate('patientId', 'userId')
-      .populate('doctorId', 'userId')
+      .populate('patientId', 'userId firstName lastName email')
+      .populate('doctorId', 'userId firstName lastName email')
       .sort({ appointmentDate: -1, startTime: -1 })
       .limit(100)
 
-    return NextResponse.json({ appointments }, { status: 200 })
+    // Add patient and doctor names to the response
+    const appointmentsWithNames = await Promise.all(appointments.map(async (appointment) => {
+      // Fetch patient details
+      const patient = await Patient.findById(appointment.patientId)
+        .populate('userId', 'firstName lastName email')
+      
+      // Fetch doctor details
+      const doctor = await Doctor.findById(appointment.doctorId)
+        .populate('userId', 'firstName lastName email')
+      
+      return {
+        ...appointment.toObject(),
+        patient: patient?.userId,
+        doctor: doctor?.userId,
+      }
+    }))
+
+    return NextResponse.json({ appointments: appointmentsWithNames }, { status: 200 })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Forbidden') {
       return NextResponse.json({ error: error.message }, { status: 403 })
