@@ -4,7 +4,6 @@ import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Activity } from 'lucide-react'
-import AdminLayout from '../layout'
 
 export default function AdminAppointmentsPage() {
   const { data: session, status } = useSession()
@@ -58,7 +57,7 @@ export default function AdminAppointmentsPage() {
   }
 
   return (
-    <AdminLayout title="Appointment Management" subtitle="Manage appointments">
+    <div>
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-gray-900 mb-2">Appointment Management</h2>
         <p className="text-gray-600">Manage scheduled appointments</p>
@@ -140,6 +139,6 @@ export default function AdminAppointmentsPage() {
           </div>
         )}
       </div>
-    </AdminLayout>
+    </div>
   )
 }

@@ -3,7 +3,7 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Users, Calendar, FileText, Package, Pill } from 'lucide-react'
+import { Users, Calendar, FileText, Package, Pill, CreditCard, Activity } from 'lucide-react'
 import Button from '@/components/ui/Button'
 
 export default function AdminDashboardPage() {
@@ -72,7 +72,7 @@ export default function AdminDashboardPage() {
   if (!session || session.user.role !== 'admin') return null
 
   return (
-    <div>
+    <div className="space-y-6">
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-gray-900 mb-2">
           Welcome, {session.user.firstName}!
@@ -101,21 +101,69 @@ export default function AdminDashboardPage() {
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          <Button variant="outline" onClick={() => router.push('/dashboard/admin/users')}>
-            <Users className="w-6 h-6 mr-2" /> Manage Users
-          </Button>
+          <button 
+            onClick={() => router.push('/dashboard/admin/users')}
+            className="flex flex-col items-center justify-center p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Users className="w-6 h-6 mb-2 text-blue-600" />
+            <span className="text-sm">Manage Users</span>
+          </button>
 
-          <Button variant="outline" onClick={() => router.push('/dashboard/admin/patients')}>
-            <Users className="w-6 h-6 mr-2" /> Manage Patients
-          </Button>
+          <button 
+            onClick={() => router.push('/dashboard/admin/patients')}
+            className="flex flex-col items-center justify-center p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Users className="w-6 h-6 mb-2 text-blue-600" />
+            <span className="text-sm">Manage Patients</span>
+          </button>
 
-          <Button variant="outline" onClick={() => router.push('/dashboard/admin/appointments')}>
-            <Calendar className="w-6 h-6 mr-2" /> Manage Appointments
-          </Button>
+          <button 
+            onClick={() => router.push('/dashboard/admin/appointments')}
+            className="flex flex-col items-center justify-center p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Calendar className="w-6 h-6 mb-2 text-blue-600" />
+            <span className="text-sm">Manage Appointments</span>
+          </button>
 
-          <Button variant="outline" onClick={() => router.push('/dashboard/admin/pharmacy')}>
-            <Pill className="w-6 h-6 mr-2" /> Manage Pharmacy
-          </Button>
+          <button 
+            onClick={() => router.push('/dashboard/admin/medical-records')}
+            className="flex flex-col items-center justify-center p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <FileText className="w-6 h-6 mb-2 text-blue-600" />
+            <span className="text-sm">Manage Records</span>
+          </button>
+
+          <button 
+            onClick={() => router.push('/dashboard/admin/prescriptions')}
+            className="flex flex-col items-center justify-center p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <FileText className="w-6 h-6 mb-2 text-blue-600" />
+            <span className="text-sm">Manage Prescriptions</span>
+          </button>
+
+          <button 
+            onClick={() => router.push('/dashboard/admin/pharmacy')}
+            className="flex flex-col items-center justify-center p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Pill className="w-6 h-6 mb-2 text-blue-600" />
+            <span className="text-sm">Manage Pharmacy</span>
+          </button>
+
+          <button 
+            onClick={() => router.push('/dashboard/admin/billing')}
+            className="flex flex-col items-center justify-center p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <CreditCard className="w-6 h-6 mb-2 text-blue-600" />
+            <span className="text-sm">Manage Billing</span>
+          </button>
+
+          <button 
+            onClick={() => router.push('/dashboard/admin/audit-logs')}
+            className="flex flex-col items-center justify-center p-4 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <Activity className="w-6 h-6 mb-2 text-blue-600" />
+            <span className="text-sm">View Logs</span>
+          </button>
         </div>
       </div>
     </div>

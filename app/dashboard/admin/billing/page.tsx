@@ -58,7 +58,7 @@ export default function AdminBillingPage() {
   }
 
   return (
-    <AdminLayout title="Billing Management" subtitle="Manage billing and payments">
+    <div>
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-gray-900 mb-2">Billing Management</h2>
         <p className="text-gray-600">Manage billing and payments</p>
@@ -136,6 +136,6 @@ export default function AdminBillingPage() {
           </div>
         )}
       </div>
-    </AdminLayout>
+    </div>
   )
 }

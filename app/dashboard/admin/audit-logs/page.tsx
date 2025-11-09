@@ -58,7 +58,7 @@ export default function AdminAuditLogsPage() {
   }
 
   return (
-    <AdminLayout title="Audit Logs" subtitle="View system activity logs">
+    <div>
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-gray-900 mb-2">Audit Logs</h2>
         <p className="text-gray-600">View system activity logs</p>
@@ -130,6 +130,6 @@ export default function AdminAuditLogsPage() {
           </div>
         )}
       </div>
-    </AdminLayout>
+    </div>
   )
 }

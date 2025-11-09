@@ -58,7 +58,7 @@ export default function AdminMedicalRecordsPage() {
   }
 
   return (
-    <AdminLayout title="Medical Records Management" subtitle="Manage patient medical records">
+    <div>
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-gray-900 mb-2">Medical Records Management</h2>
         <p className="text-gray-600">Manage patient medical records and consultations</p>
@@ -135,6 +135,6 @@ export default function AdminMedicalRecordsPage() {
           </div>
         )}
       </div>
-    </AdminLayout>
+    </div>
   )
 }
