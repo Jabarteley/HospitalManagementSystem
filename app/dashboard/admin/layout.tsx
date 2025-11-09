@@ -3,25 +3,28 @@
 import { useSession } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useState, useEffect, ReactNode } from 'react'
-import { Activity, Users, Calendar, FileText, Pill, CreditCard, Package, LogOut, Menu, X } from 'lucide-react'
+import { Activity, Users, Calendar, FileText, Pill, CreditCard, LogOut, Menu, X } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import { signOut } from 'next-auth/react'
 
 interface AdminLayoutProps {
   children: ReactNode;
-  title?: string;
-  subtitle?: string;
 }
 
-export default function AdminLayout({ 
-  children, 
-  title = 'Admin Dashboard',
-  subtitle = 'Manage your hospital operations'
-}: AdminLayoutProps) {
+const getTitleFromPathname = (pathname: string) => {
+  if (pathname === '/dashboard/admin') return 'Dashboard';
+  const segment = pathname.split('/').pop() || '';
+  const title = segment.replace(/-/g, ' ');
+  return title.charAt(0).toUpperCase() + title.slice(1);
+};
+
+export default function AdminDashboardLayout({ children }: AdminLayoutProps) {
   const { data: session, status } = useSession()
   const router = useRouter()
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  const title = getTitleFromPathname(pathname);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -63,7 +66,7 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0 lg:static lg:inset-0`}>
         <div className="flex items-center justify-center h-16 px-4 bg-blue-600">
@@ -91,7 +94,7 @@ export default function AdminLayout({
       </div>
 
       {/* Main content */}
-      <div className={`lg:ml-64 transition-all duration-300 ${sidebarOpen ? 'lg:pl-0' : 'lg:pl-64'}`}>
+      <div className="flex-1 flex flex-col">
         <header className="bg-white shadow-sm">
           <div className="flex items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
             <div className="flex items-center">
@@ -103,7 +106,7 @@ export default function AdminLayout({
                 <span className="sr-only">Open sidebar</span>
                 {sidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
               </button>
-              <h1 className="text-xl font-semibold text-gray-900">{title}</h1>
+              <h1 className className="text-xl font-semibold text-gray-900">{title}</h1>
             </div>
             <div className="flex items-center space-x-4">
               <div className="text-right hidden md:block">
@@ -127,7 +130,7 @@ export default function AdminLayout({
           </div>
         </header>
 
-        <main className="p-2 sm:p-4 lg:p-6">
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
           {children}
         </main>
       </div>

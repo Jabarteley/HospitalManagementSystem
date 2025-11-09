@@ -3,13 +3,25 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Activity } from 'lucide-react'
+import { Activity, Plus } from 'lucide-react'
+import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
 
 export default function AdminAppointmentsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [appointments, setAppointments] = useState([])
   const [loading, setLoading] = useState(true)
+  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [formData, setFormData] = useState({
+    patientId: '',
+    doctorId: '',
+    appointmentDate: '',
+    startTime: '',
+    endTime: '',
+    reason: '',
+  })
+  const [error, setError] = useState('')
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -41,6 +53,38 @@ export default function AdminAppointmentsPage() {
     }
   }
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+
+    try {
+      const response = await fetch('/api/appointments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setShowCreateForm(false)
+        setFormData({
+          patientId: '',
+          doctorId: '',
+          appointmentDate: '',
+          startTime: '',
+          endTime: '',
+          reason: '',
+        })
+        fetchAppointments() // Refresh the list
+      } else {
+        setError(data.error || 'Failed to create appointment')
+      }
+    } catch (error) {
+      setError('An error occurred while creating the appointment')
+    }
+  }
+
   if (status === 'loading' || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -58,10 +102,95 @@ export default function AdminAppointmentsPage() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">Appointment Management</h2>
-        <p className="text-gray-600">Manage scheduled appointments</p>
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Appointment Management</h2>
+          <p className="text-gray-600">Manage scheduled appointments</p>
+        </div>
+        <Button
+          variant="primary"
+          size="md"
+          onClick={() => setShowCreateForm(true)}
+          className="flex items-center space-x-2"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Create Appointment</span>
+        </Button>
       </div>
+
+      {showCreateForm && (
+        <div className="mb-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
+          <h3 className="text-lg font-semibold text-blue-900 mb-4">Create New Appointment</h3>
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-red-600 text-sm">{error}</p>
+            </div>
+          )}
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Input
+              label="Patient ID"
+              type="text"
+              placeholder="Enter patient ID"
+              value={formData.patientId}
+              onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
+              required
+            />
+            <Input
+              label="Doctor ID"
+              type="text"
+              placeholder="Enter doctor ID"
+              value={formData.doctorId}
+              onChange={(e) => setFormData({ ...formData, doctorId: e.target.value })}
+              required
+            />
+            <Input
+              label="Appointment Date"
+              type="date"
+              value={formData.appointmentDate}
+              onChange={(e) => setFormData({ ...formData, appointmentDate: e.target.value })}
+              required
+            />
+            <Input
+              label="Start Time"
+              type="time"
+              value={formData.startTime}
+              onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+              required
+            />
+            <Input
+              label="End Time"
+              type="time"
+              value={formData.endTime}
+              onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+              required
+            />
+            <Input
+              label="Reason"
+              type="text"
+              placeholder="Reason for appointment"
+              value={formData.reason}
+              onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+              required
+            />
+            <div className="flex space-x-4 pt-4">
+              <Button variant="primary" size="md" type="submit">
+                Create Appointment
+              </Button>
+              <Button
+                variant="outline"
+                size="md"
+                type="button"
+                onClick={() => {
+                  setShowCreateForm(false)
+                  setError('')
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow-md p-6">
         <div className="mb-6">
@@ -95,7 +224,7 @@ export default function AdminAppointmentsPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {appointments.map((appointment) => (
+                {appointments.map((appointment: any) => (
                   <tr key={appointment._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">

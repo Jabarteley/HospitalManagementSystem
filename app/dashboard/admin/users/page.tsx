@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Users, Plus, Edit, Trash2, Activity } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import AdminLayout from '../layout'
+
 
 export default function AdminUsersPage() {
   const { data: session, status } = useSession()
