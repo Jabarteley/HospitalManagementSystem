@@ -1,0 +1,217 @@
+✅ Project Title
+
+Smart Electronic Clinic / Hospital Management System (EHMS)
+
+✅ System Overview / Description
+
+The Electronic Clinic/Hospital Management System is a web-based application that manages hospital operations digitally. It handles:
+
+Patient registration
+
+Appointment booking
+
+Electronic health records (EHR)
+
+Doctor–patient consultation workflow
+
+Pharmacy medicine dispensing
+
+Billing and payment
+
+(Optional) Blockchain-backed clinical data sharing & audit tracking
+
+Your stack:
+
+Frontend: Next.js (React UI pages)
+
+Backend: Next.js API routes (/api/*)
+
+Database: MongoDB + Mongoose
+
+✅ Users / Actors
+Role	Permissions
+Admin	Full system access, manage staff, configure system
+Doctor	Access patient records assigned/permission-based, consultations, prescriptions
+Patient	Medical profile, book appointments, view prescriptions, pay bills
+Pharmacist	Manage inventory, dispense medication, view prescriptions
+Nurse / Receptionist (optional)	Register patients, schedule appointments
+Laboratory Staff (optional)	Manage lab test requests and results
+✅ Core Features (Requirements)
+🔹 1. Authentication & Role Management
+
+JWT-based session authentication (NextAuth optional)
+
+Login with email + password
+
+Role-based access control (Admin / Doctor / Patient / Pharmacy)
+
+🔹 2. Patient Management
+
+Functions
+
+Patient registration (by patient or staff)
+
+Patient profile: bio-data, medical history, allergies, etc.
+
+Upload & store patient documents (scan results, reports)
+
+Database example (MongoDB - Patient model)
+
+Patient: {
+  firstName, lastName, dob, gender, contactInfo,
+  medicalHistory, allergies, insuranceDetails,
+  emergencyContact, createdBy, createdAt
+}
+
+🔹 3. Appointment Scheduling (Booking System)
+
+Features
+
+Patient selects doctor, date, and time
+
+Doctor dashboard shows upcoming appointments
+
+Email / SMS / WhatsApp notification (optional)
+
+Appointment status (pending / approved / completed / canceled)
+
+🔹 4. Electronic Health Record (EHR)
+
+Doctor can view past visits, lab results, prescriptions
+
+Add clinical notes, symptoms, diagnosis
+
+EHR Record Structure
+
+Record: {
+  patientId, doctorId,
+  symptoms, diagnosis, treatments,
+  attachments, consultationFee,
+  status: "open" | "closed"
+}
+
+🔹 5. Consultation + Smart Contract-inspired Workflow
+
+(from your 3rd diagram)
+
+Patient Action	System Action
+Book appointment	Notify doctor
+Doctor consultation done	System stores consultation record
+Doctor issues prescription	Pharmacy notified
+Patient approves payment	Billing processed
+🔹 6. Prescription & Pharmacy Module
+
+Doctor issues prescription digitally
+
+Pharmacist views pending prescriptions
+
+Medicines dispensed → system updates inventory
+
+Mark prescription as dispensed
+
+Inventory tracking
+
+Add/Edit/Delete drugs
+
+Quantity tracking
+
+Automated low-stock alert
+
+🔹 7. Laboratory Test Module (optional)
+
+Doctor requests lab test
+
+Lab uploads test result (PDF or data)
+
+Result visible in patient EHR automatically
+
+🔹 8. Billing & Payment
+
+Automatic invoice generation when appointment/consultation is completed
+
+Status tracking (paid/unpaid)
+
+Payment options: cash, transfer, card, insurance
+
+🔹 9. Blockchain-inspired Clinical Data Sharing (optional)
+
+(From images you uploaded)
+
+If you implement this:
+
+Store patient data in encrypted form
+
+Use logs / audit trails for every data access
+
+Store hash of records to blockchain (not full data)
+
+Actions:
+
+Action	Blockchain
+New appointment / EHR update	Append record
+Prescription issued	Append record
+Payment completed	Append record
+🔹 10. Backup & Data Security
+
+Automated daily backup of MongoDB
+
+Encrypted at-rest and in-transit
+
+GDPR/HIPAA compliance concepts (data privacy)
+
+✅ System Architecture
+Next.js Pages (UI)
+      ⇅
+Next.js API Routes (/api/*)
+      ⇅
+Mongoose Models (MongoDB)
+
+
+Optional Blockchain Add-on:
+
+Hospital DB → Hash → Smart Contract → Blockchain Ledger
+
+✅ Database (Mongoose Models)
+Model	Description
+User	Authentication & role
+Patient	Patient profile & medical details
+Doctor	Doctor profile + specialization
+Appointment	Booking schedule
+MedicalRecord	Consultation notes & history
+Prescription	Medicine details
+PharmacyInventory	Drug stock management
+Invoice / Billing	Payment tracking
+✅ Pages / UI Screens
+Patient Portal
+
+Login / Register
+
+Book appointment
+
+View lab results
+
+View prescriptions
+
+Doctor Dashboard
+
+View appointments
+
+Consult patient
+
+Add EHR record
+
+Issue prescription
+
+Pharmacy Dashboard
+
+Process prescriptions
+
+Manage drug inventory
+
+Admin Portal
+
+System overview
+
+Add/manage staff
+
+Reports & analytics
