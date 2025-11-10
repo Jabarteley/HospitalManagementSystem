@@ -82,7 +82,7 @@ export default function MedicalRecordsPage() {
 
   const fetchDoctors = async () => {
     try {
-      const response = await fetch('/api/users?role=doctors')
+      const response = await fetch('/api/users?role=doctor')
       const data = await response.json()
       
       if (response.ok) {

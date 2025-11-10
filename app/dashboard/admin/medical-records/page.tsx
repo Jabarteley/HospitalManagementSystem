@@ -13,6 +13,8 @@ export default function AdminMedicalRecordsPage() {
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
+  const [patients, setPatients] = useState([])
+  const [doctors, setDoctors] = useState([])
   const [formData, setFormData] = useState({
     patientId: '',
     doctorId: '',
@@ -35,6 +37,8 @@ export default function AdminMedicalRecordsPage() {
   useEffect(() => {
     if (session?.user?.role === 'admin') {
       fetchRecords()
+      fetchPatients()
+      fetchDoctors()
     }
   }, [session])
 
@@ -51,6 +55,36 @@ export default function AdminMedicalRecordsPage() {
       console.error('Error fetching medical records:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchPatients = async () => {
+    try {
+      const response = await fetch('/api/patients')
+      const data = await response.json()
+
+      if (response.ok) {
+        setPatients(data.patients || [])
+      } else {
+        console.error('Error fetching patients:', data.error || 'Unknown error')
+      }
+    } catch (error) {
+      console.error('Error fetching patients:', error)
+    }
+  }
+
+  const fetchDoctors = async () => {
+    try {
+      const response = await fetch('/api/users?role=doctor')
+      const data = await response.json()
+
+      if (response.ok) {
+        setDoctors(data.users || [])
+      } else {
+        console.error('Error fetching doctors:', data.error || 'Unknown error')
+      }
+    } catch (error) {
+      console.error('Error fetching doctors:', error)
     }
   }
 
@@ -133,22 +167,47 @@ export default function AdminMedicalRecordsPage() {
             </div>
           )}
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Input
-              label="Patient ID"
-              type="text"
-              placeholder="Enter patient ID"
-              value={formData.patientId}
-              onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
-              required
-            />
-            <Input
-              label="Doctor ID"
-              type="text"
-              placeholder="Enter doctor ID"
-              value={formData.doctorId}
-              onChange={(e) => setFormData({ ...formData, doctorId: e.target.value })}
-              required
-            />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Patient
+              </label>
+              <select
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={formData.patientId}
+                onChange={(e) =>
+                  setFormData({ ...formData, patientId: e.target.value })
+                }
+                required
+              >
+                <option value="">Select Patient</option>
+                {patients.map(patient => (
+                  <option key={patient._id} value={patient._id}>
+                    {patient.firstName} {patient.lastName} ({patient.email})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Doctor
+              </label>
+              <select
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                value={formData.doctorId}
+                onChange={(e) =>
+                  setFormData({ ...formData, doctorId: e.target.value })
+                }
+                required
+              >
+                <option value="">Select Doctor</option>
+                {doctors.map(doctor => (
+                  <option key={doctor._id} value={doctor._id}>
+                    Dr. {doctor.firstName} {doctor.lastName} ({doctor.specialization})
+                  </option>
+                ))}
+              </select>
+            </div>
             <Input
               label="Visit Date"
               type="date"

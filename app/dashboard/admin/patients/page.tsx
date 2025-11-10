@@ -40,7 +40,7 @@ export default function AdminPatientsPage() {
   const fetchPatients = async () => {
     try {
       setLoading(true)
-      const response = await fetch('/api/patients')
+      const response = await fetch('/api/patients', { cache: 'no-store' })
       const data = await response.json()
       
       if (response.ok) {

@@ -13,7 +13,7 @@ export default function AdminUsersPage() {
   const router = useRouter()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
-  const [activeTab, setActiveTab] = useState('doctors')
+  const [activeTab, setActiveTab] = useState('doctor')
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [formData, setFormData] = useState({
     email: '',
@@ -42,16 +42,41 @@ export default function AdminUsersPage() {
     }
   }, [session, activeTab])
 
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, role: activeTab }));
+  }, [activeTab]);
+
   const fetchUsers = async () => {
     try {
       setLoading(true)
-      const response = await fetch(`/api/users?role=${activeTab}`)
-      const data = await response.json()
       
-      if (response.ok) {
-        setUsers(data.users || [])
+      if (activeTab === 'patient') {
+        const response = await fetch('/api/patients')
+        const data = await response.json()
+
+        if (response.ok) {
+          const patientUsers = data.patients ? data.patients.map(patient => ({
+            ...patient.userId,
+            _id: patient.userId._id,
+            email: patient.email,
+            firstName: patient.firstName,
+            lastName: patient.lastName,
+            phone: patient.phone,
+            role: 'patient'
+          })) : []
+          setUsers(patientUsers)
+        } else {
+          setError(data.error || 'Failed to fetch patients')
+        }
       } else {
-        setError(data.error || 'Failed to fetch users')
+        const response = await fetch(`/api/users?role=${activeTab}`)
+        const data = await response.json()
+
+        if (response.ok) {
+          setUsers(data.users || [])
+        } else {
+          setError(data.error || `Failed to fetch ${activeTab}s`)
+        }
       }
     } catch (error) {
       setError('An error occurred while fetching users')
@@ -83,7 +108,7 @@ export default function AdminUsersPage() {
           firstName: '',
           lastName: '',
           phone: '',
-          role: 'doctor',
+          role: activeTab,
           specialization: '',
           licenseNumber: '',
           department: '',
@@ -124,25 +149,31 @@ export default function AdminUsersPage() {
 
       <div className="bg-white rounded-xl shadow-md p-6 mb-8">
         <div className="flex justify-between items-center mb-6">
-          <div className="flex space-x-1 border-b">
-            {['doctors', 'pharmacists'].map((tab) => (
+          <div className="flex space-x-1 border-b overflow-x-auto">
+            {['doctor', 'pharmacist', 'admin', 'patient'].map((tab) => (
               <button
                 key={tab}
-                className={`px-4 py-2 font-medium ${
+                className={`px-4 py-2 font-medium whitespace-nowrap ${
                   activeTab === tab
                     ? 'text-blue-600 border-b-2 border-blue-600'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
                 onClick={() => setActiveTab(tab)}
               >
-                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}s
               </button>
             ))}
           </div>
           <Button
             variant="primary"
             size="md"
-            onClick={() => setShowCreateForm(true)}
+            onClick={() => {
+              if (activeTab === 'admin' || activeTab === 'patient') {
+                alert(`Users with "${activeTab}" role need to be created through a different process.`);
+              } else {
+                setShowCreateForm(true);
+              }
+            }}
             className="flex items-center space-x-2"
           >
             <Plus className="w-4 h-4" />
@@ -153,7 +184,7 @@ export default function AdminUsersPage() {
         {showCreateForm && (
           <div className="mb-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
             <h3 className="text-lg font-semibold text-blue-900 mb-4">
-              Add New {activeTab === 'doctors' ? 'Doctor' : 'Pharmacist'}
+              Add New {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
             </h3>
             {error && (
               <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
@@ -185,7 +216,7 @@ export default function AdminUsersPage() {
               <Input
                 label="Email"
                 type="email"
-                placeholder="doctor@example.com"
+                placeholder={`${activeTab}@example.com`}
                 value={formData.email}
                 onChange={(e) =>
                   setFormData({ ...formData, email: e.target.value })
@@ -202,7 +233,7 @@ export default function AdminUsersPage() {
                 }
               />
               
-              {activeTab === 'doctors' && (
+              {activeTab === 'doctor' && (
                 <>
                   <Input
                     label="Specialization"
@@ -247,21 +278,13 @@ export default function AdminUsersPage() {
                 </>
               )}
               
-              <input
-                type="hidden"
-                value={activeTab === 'doctors' ? 'doctor' : 'pharmacist'}
-                onChange={(e) =>
-                  setFormData({ ...formData, role: e.target.value })
-                }
-              />
-              
               <div className="flex space-x-4 pt-4">
                 <Button
                   variant="primary"
                   size="md"
                   type="submit"
                 >
-                  Create {activeTab === 'doctors' ? 'Doctor' : 'Pharmacist'}
+                  Create {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
                 </Button>
                 <Button
                   variant="outline"
@@ -270,6 +293,17 @@ export default function AdminUsersPage() {
                   onClick={() => {
                     setShowCreateForm(false)
                     setError('')
+                    setFormData({
+                      email: '',
+                      firstName: '',
+                      lastName: '',
+                      phone: '',
+                      role: 'doctor',
+                      specialization: '',
+                      licenseNumber: '',
+                      department: '',
+                      consultationFee: 0,
+                    })
                   }}
                 >
                   Cancel
@@ -301,7 +335,7 @@ export default function AdminUsersPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Phone
                   </th>
-                  {activeTab === 'doctors' && (
+                  {activeTab === 'doctor' && (
                     <>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Specialization
@@ -317,7 +351,7 @@ export default function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {users.map((user) => (
+                {users.map((user: any) => (
                   <tr key={user._id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">
@@ -330,7 +364,7 @@ export default function AdminUsersPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-500">{user.phone || 'N/A'}</div>
                     </td>
-                    {activeTab === 'doctors' && user.doctorData && (
+                    {activeTab === 'doctor' && user.doctorData && (
                       <>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-500">{user.doctorData.specialization}</div>
@@ -362,8 +396,8 @@ export default function AdminUsersPage() {
             {users.length === 0 && (
               <div className="text-center py-12">
                 <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">No {activeTab} found</p>
-                <p className="text-sm text-gray-400 mt-2">Add a new {activeTab.slice(0, -1)} to get started</p>
+                <p className="text-gray-500">No {activeTab}s found</p>
+                <p className="text-sm text-gray-400 mt-2">Add a new {activeTab} to get started</p>
               </div>
             )}
           </div>

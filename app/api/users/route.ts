@@ -37,7 +37,12 @@ export async function GET(req: NextRequest) {
 
     await dbConnect()
 
-    const users = await User.find({ role }).select('-password').sort({ createdAt: -1 })
+    // If no role is specified, return all users; otherwise filter by the specified role
+    let query = {};
+    if (role) {
+      query = { role };
+    }
+    const users = await User.find(query).select('-password').sort({ createdAt: -1 })
 
     // If we're looking for doctors, get their doctor-specific data as well
     if (role === 'doctor') {

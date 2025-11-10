@@ -33,17 +33,17 @@ export default function AdminDashboardPage() {
 
   const fetchStats = async () => {
     try {
-      const [patientsRes, doctorsRes, appointmentsRes, prescriptionsRes, inventoryRes] =
+      const [patientsRes, usersRes, appointmentsRes, prescriptionsRes, inventoryRes] =
         await Promise.all([
-          fetch('/api/patients'),
-          fetch('/api/users?role=doctors'),
+          fetch('/api/patients', { cache: 'no-store' }),
+          fetch('/api/users'), // Fetch all users instead of just doctors
           fetch('/api/appointments'),
           fetch('/api/prescriptions'),
           fetch('/api/pharmacy/inventory'),
         ])
 
       const patientsData = await patientsRes.json()
-      const doctorsData = await doctorsRes.json()
+      const usersData = await usersRes.json()
       const appointmentsData = await appointmentsRes.json()
       const prescriptionsData = await prescriptionsRes.json()
       const inventoryData = await inventoryRes.json()
@@ -56,9 +56,12 @@ export default function AdminDashboardPage() {
         (m: any) => m.isLowStock
       ).length
 
+      // Count doctors from all users
+      const doctorsCount = usersData.users ? usersData.users.filter((u: any) => u.role === 'doctor').length : 0
+
       setStats({
-        totalPatients: patientsData.patients.length,
-        totalDoctors: doctorsData.users.length,
+        totalPatients: patientsData.patients ? patientsData.patients.length : 0,
+        totalDoctors: doctorsCount,
         totalAppointments: appointmentsData.appointments.length,
         pendingAppointments,
         totalPrescriptions: prescriptionsData.prescriptions.length,
