@@ -42,7 +42,9 @@ export default function MedicalRecordsPage() {
           // Pre-fill the form with appointment details
           setFormData(prev => ({
             ...prev,
-            patientId: appointment.patientId._id || appointment.patientId, // Use the correct patient ID
+            patientId: (appointment.patientId && typeof appointment.patientId === 'object') 
+              ? appointment.patientId._id 
+              : appointment.patientId, // Use the correct patient ID
             visitDate: new Date(appointment.appointmentDate).toISOString().split('T')[0], // Format as YYYY-MM-DD
           }))
           setShowCreateForm(true)
@@ -137,9 +139,10 @@ export default function MedicalRecordsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          visitDate: formData.visitDate, // Keep as string, API will convert it
-          symptoms: formData.symptoms.split(',').map(s => s.trim()).filter(s => s),
-          treatments: formData.treatments.split(',').map(t => t.trim()).filter(t => t),
+          visitDate: formData.visitDate, // Keep as string
+          symptoms: formData.symptoms ? formData.symptoms.split(',').map(s => s.trim()).filter(s => s) : [],
+          treatments: formData.treatments ? formData.treatments.split(',').map(t => t.trim()).filter(t => t) : [],
+          consultationFee: Number(formData.consultationFee) || 0, // Ensure it's a number
         }),
       })
 

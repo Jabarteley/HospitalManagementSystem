@@ -11,7 +11,7 @@ import { createAuditLog } from '@/utils/auditLogger'
 
 const createMedicalRecordSchema = z.object({
   patientId: z.string(),
-  doctorId: z.string(),
+  doctorId: z.string().optional(), // Make optional since we set it automatically for doctors
   visitDate: z.string(),
   symptoms: z.array(z.string()),
   diagnosis: z.string().min(1, 'Diagnosis is required'),
@@ -97,7 +97,9 @@ export async function POST(req: NextRequest) {
     const user = await requireAuth(['admin', 'doctor'])
 
     const body = await req.json()
+    console.log('Received medical record data:', body) // Debug log
     const validatedData = createMedicalRecordSchema.parse(body)
+    console.log('Validated data:', validatedData) // Debug log
 
     await dbConnect()
 
@@ -146,6 +148,7 @@ export async function POST(req: NextRequest) {
     }
 
     // For doctors, automatically use their doctor profile ID
+    // If no doctorId was provided in the request, use the authenticated user's doctor profile
     if (user.role === 'doctor') {
       const authDoctor = await Doctor.findOne({ userId: user.id });
       if (!authDoctor) {
@@ -155,6 +158,24 @@ export async function POST(req: NextRequest) {
         );
       }
       doctorModelId = authDoctor._id;
+    } else if (validatedData.doctorId) {
+      // For admins, convert the provided doctorId to model ID if needed
+      if (!mongoose.Types.ObjectId.isValid(validatedData.doctorId)) {
+        const doctor = await Doctor.findOne({ userId: validatedData.doctorId });
+        if (doctor) {
+          doctorModelId = doctor._id;
+        }
+      } else {
+        const existingDoctor = await Doctor.findById(validatedData.doctorId);
+        if (!existingDoctor) {
+          const doctor = await Doctor.findOne({ userId: validatedData.doctorId });
+          if (doctor) {
+            doctorModelId = doctor._id;
+          }
+        } else {
+          doctorModelId = validatedData.doctorId;
+        }
+      }
     }
 
     // Check if there's an existing appointment for this patient on the visit date
