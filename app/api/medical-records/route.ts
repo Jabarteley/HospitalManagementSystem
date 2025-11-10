@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Validate that the authenticated user is authorized to create this record
+    // For doctors, automatically use their doctor profile ID
     if (user.role === 'doctor') {
       const authDoctor = await Doctor.findOne({ userId: user.id });
       if (!authDoctor) {
@@ -154,18 +154,46 @@ export async function POST(req: NextRequest) {
           { status: 403 }
         );
       }
-      // The doctor creating the record must match the doctor in the request
-      if (authDoctor._id.toString() !== doctorModelId.toString()) {
-        return NextResponse.json(
-          { error: 'Doctor can only create records for themselves' },
-          { status: 403 }
-        );
+      doctorModelId = authDoctor._id;
+    }
+
+    // Check if there's an existing appointment for this patient on the visit date
+    // that involves the same doctor
+    let appointmentId = null;
+    const possibleAppointments = await Appointment.find({
+      patientId: patientModelId,
+      doctorId: doctorModelId,
+      appointmentDate: {
+        $gte: new Date(new Date(validatedData.visitDate).setHours(0, 0, 0, 0)),
+        $lt: new Date(new Date(validatedData.visitDate).setHours(23, 59, 59, 999))
+      },
+      status: { $ne: 'completed' } // Only consider non-completed appointments
+    });
+
+    // Find the most appropriate appointment
+    if (possibleAppointments.length > 0) {
+      // If the doctor is creating a record for today, and there's an appointment for today,
+      // link it to the medical record
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const todayAppointment = possibleAppointments.find(app => {
+        const appDate = new Date(app.appointmentDate);
+        appDate.setHours(0, 0, 0, 0);
+        return appDate.getTime() === today.getTime();
+      });
+      
+      if (todayAppointment) {
+        appointmentId = todayAppointment._id;
+        // Update the appointment status to completed
+        await Appointment.findByIdAndUpdate(todayAppointment._id, { status: 'completed' });
       }
     }
 
     const record = await MedicalRecord.create({
       patientId: patientModelId,
       doctorId: doctorModelId,
+      appointmentId: appointmentId, // Link to the appointment if found
       visitDate: new Date(validatedData.visitDate),
       symptoms: validatedData.symptoms,
       diagnosis: validatedData.diagnosis,
@@ -181,7 +209,9 @@ export async function POST(req: NextRequest) {
       action: 'CREATE',
       entity: 'MedicalRecord',
       entityId: record._id,
-      description: `New medical record created for patient`,
+      description: appointmentId 
+        ? `New medical record created for appointment ${appointmentId}`
+        : `New medical record created for patient`,
       ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || undefined,
       userAgent: req.headers.get('user-agent') || undefined,
     })

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { FileText, Plus, Edit, Trash2, Users, Calendar, Pill, Activity, LogOut } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
@@ -11,6 +11,7 @@ import { signOut } from 'next-auth/react'
 export default function MedicalRecordsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(true)
   const [showCreateForm, setShowCreateForm] = useState(false)
@@ -27,6 +28,33 @@ export default function MedicalRecordsPage() {
     status: 'open',
   })
   const [error, setError] = useState('')
+
+  const loadAppointmentDetails = async (appointmentId: string) => {
+    try {
+      setLoading(true)
+      // Fetch the specific appointment details
+      const allAppointmentsResponse = await fetch('/api/appointments')
+      if (allAppointmentsResponse.ok) {
+        const data = await allAppointmentsResponse.json()
+        const appointment = data.appointments.find((app: any) => app._id === appointmentId)
+        
+        if (appointment) {
+          // Pre-fill the form with appointment details
+          setFormData(prev => ({
+            ...prev,
+            patientId: appointment.patientId._id || appointment.patientId, // Use the correct patient ID
+            visitDate: new Date(appointment.appointmentDate).toISOString().split('T')[0], // Format as YYYY-MM-DD
+          }))
+          setShowCreateForm(true)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading appointment details:', error)
+      setError('Failed to load appointment details')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -46,8 +74,14 @@ export default function MedicalRecordsPage() {
         // If doctor, set their own ID as the doctorId by default
         setFormData(prev => ({ ...prev, doctorId: session.user.id }))
       }
+      
+      // Check if there's an appointment ID in the URL to pre-fill the form
+      const appointmentId = searchParams.get('appointmentId')
+      if (appointmentId && session.user.role === 'doctor') {
+        loadAppointmentDetails(appointmentId)
+      }
     }
-  }, [session])
+  }, [session, searchParams])
 
   const fetchMedicalRecords = async () => {
     try {
@@ -103,7 +137,7 @@ export default function MedicalRecordsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          visitDate: new Date(formData.visitDate),
+          visitDate: formData.visitDate, // Keep as string, API will convert it
           symptoms: formData.symptoms.split(',').map(s => s.trim()).filter(s => s),
           treatments: formData.treatments.split(',').map(t => t.trim()).filter(t => t),
         }),
@@ -123,6 +157,12 @@ export default function MedicalRecordsPage() {
           consultationFee: 0,
           status: 'open',
         })
+        
+        // Clear the URL parameter if it was used to start this consultation
+        if (searchParams.get('appointmentId')) {
+          router.push('/medical-records', { scroll: false })
+        }
+        
         fetchMedicalRecords() // Refresh the list
       } else {
         setError(data.error || 'Failed to create medical record')

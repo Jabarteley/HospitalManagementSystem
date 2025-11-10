@@ -212,3 +212,74 @@ export async function POST(req: NextRequest) {
     )
   }
 }
+
+// Handle appointment updates (status changes, etc.)
+export async function PUT(req: NextRequest) {
+  try {
+    const user = await requireAuth(['admin', 'doctor'])
+    
+    const { appointmentId, status, ...updateData } = await req.json()
+
+    await dbConnect()
+
+    if (!appointmentId) {
+      return NextResponse.json(
+        { error: 'Appointment ID is required' },
+        { status: 400 }
+      )
+    }
+
+    // Find the appointment
+    const appointment = await Appointment.findById(appointmentId)
+    if (!appointment) {
+      return NextResponse.json(
+        { error: 'Appointment not found' },
+        { status: 404 }
+      )
+    }
+
+    // Only allow the doctor who owns the appointment to update it
+    if (user.role === 'doctor') {
+      const doctor = await Doctor.findOne({ userId: user.id })
+      if (!doctor || appointment.doctorId.toString() !== doctor._id.toString()) {
+        return NextResponse.json(
+          { error: 'You can only update appointments assigned to you' },
+          { status: 403 }
+        )
+      }
+    }
+
+    // Update the appointment with new data
+    const updatedAppointment = await Appointment.findByIdAndUpdate(
+      appointmentId,
+      { ...updateData },
+      { new: true, runValidators: true }
+    )
+
+    await createAuditLog({
+      userId: user.id,
+      userRole: user.role,
+      action: 'UPDATE',
+      entity: 'Appointment',
+      entityId: appointmentId,
+      description: `Appointment status updated to ${updateData.status || status}`,
+      ipAddress: req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || undefined,
+      userAgent: req.headers.get('user-agent') || undefined,
+    })
+
+    return NextResponse.json(
+      { message: 'Appointment updated successfully', appointment: updatedAppointment },
+      { status: 200 }
+    )
+  } catch (error: any) {
+    if (error.message === 'Unauthorized' || error.message === 'Forbidden') {
+      return NextResponse.json({ error: error.message }, { status: 403 })
+    }
+
+    console.error('Update appointment error:', error)
+    return NextResponse.json(
+      { error: 'Failed to update appointment' },
+      { status: 500 }
+    )
+  }
+}

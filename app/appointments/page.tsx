@@ -126,6 +126,30 @@ export default function AppointmentsPage() {
     }
   }
 
+  const updateAppointmentStatus = async (appointmentId: string, status: string) => {
+    try {
+      const response = await fetch('/api/appointments', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          appointmentId, 
+          status,
+          ...(status === 'completed' && { status }) // Only update status to completed if that's the target
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        fetchAppointments() // Refresh the list
+      } else {
+        setError(data.error || 'Failed to update appointment')
+      }
+    } catch (error) {
+      setError('An error occurred while updating the appointment')
+    }
+  }
+
   const handleLogout = async () => {
     await signOut({ callbackUrl: '/' })
   }
@@ -392,19 +416,36 @@ export default function AppointmentsPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mr-2"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        {session.user.role === 'doctor' && appointment.status === 'pending' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mr-2 text-green-600 hover:text-green-800"
+                            onClick={() => updateAppointmentStatus(appointment._id, 'approved')}
+                          >
+                            Approve
+                          </Button>
+                        )}
+                        {session.user.role === 'doctor' && appointment.status === 'approved' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mr-2 text-blue-600 hover:text-blue-800"
+                            onClick={() => router.push(`/medical-records?appointmentId=${appointment._id}`)}
+                          >
+                            Start Consultation
+                          </Button>
+                        )}
+                        {(session.user.role === 'admin' || (session.user.role === 'doctor' && ['pending', 'approved'].includes(appointment.status))) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-800"
+                            onClick={() => updateAppointmentStatus(appointment._id, 'cancelled')}
+                          >
+                            Cancel
+                          </Button>
+                        )}
                       </td>
                     </tr>
                   ))}
