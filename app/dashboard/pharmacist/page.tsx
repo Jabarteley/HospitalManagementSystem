@@ -218,7 +218,7 @@ export default function PharmacistDashboardPage() {
               variant="outline"
               size="sm"
               className="mt-4"
-              onClick={() => router.push('/pharmacy')}
+              onClick={() => router.push('/pharmacy/prescriptions')}
             >
               View All Prescriptions
             </Button>
@@ -256,7 +256,7 @@ export default function PharmacistDashboardPage() {
               variant="outline"
               size="sm"
               className="mt-4"
-              onClick={() => router.push('/pharmacy')}
+              onClick={() => router.push('/pharmacy/inventory')}
             >
               Manage Inventory
             </Button>
@@ -271,7 +271,7 @@ export default function PharmacistDashboardPage() {
               variant="outline"
               size="md"
               className="flex flex-col items-center justify-center p-4"
-              onClick={() => router.push('/pharmacy')}
+              onClick={() => router.push('/pharmacy/prescriptions')}
             >
               <Pill className="w-6 h-6 mb-2 text-blue-600" />
               <span>Process Prescriptions</span>
@@ -280,7 +280,7 @@ export default function PharmacistDashboardPage() {
               variant="outline"
               size="md"
               className="flex flex-col items-center justify-center p-4"
-              onClick={() => router.push('/pharmacy')}
+              onClick={() => router.push('/pharmacy/inventory')}
             >
               <Package className="w-6 h-6 mb-2 text-blue-600" />
               <span>Manage Inventory</span>
