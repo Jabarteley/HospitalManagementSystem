@@ -11,12 +11,23 @@ const createMedicineSchema = z.object({
   category: z.string().min(1, 'Category is required'),
   manufacturer: z.string().min(1, 'Manufacturer is required'),
   batchNumber: z.string().min(1, 'Batch number is required'),
-  expiryDate: z.string(),
-  quantity: z.number().min(0, 'Quantity cannot be negative'),
-  unitPrice: z.number().min(0, 'Unit price cannot be negative'),
-  reorderLevel: z.number().min(0, 'Reorder level cannot be negative').default(10),
+  expiryDate: z.string(), // Accept as string, will convert to Date
+  quantity: z.preprocess((val) => Number(val), z.number().min(0, 'Quantity cannot be negative')), // Process string to number
+  unitPrice: z.preprocess((val) => Number(val), z.number().min(0, 'Unit price cannot be negative')), // Process string to number
+  reorderLevel: z.preprocess((val) => Number(val), z.number().min(0, 'Reorder level cannot be negative').default(10)), // Process string to number
   description: z.string().optional(),
-  sideEffects: z.string().optional(), // Accept as string, convert to array in the route
+  sideEffects: z.preprocess(
+    (val) => {
+      if (typeof val === 'string') {
+        return val.split(',').map(s => s.trim()).filter(s => s);
+      } else if (Array.isArray(val)) {
+        return val.filter(s => s && s.trim());
+      } else {
+        return [];
+      }
+    },
+    z.array(z.string())
+  ).optional(),
 })
 
 export async function GET(req: NextRequest) {
@@ -52,20 +63,8 @@ export async function POST(req: NextRequest) {
 
     await dbConnect()
 
-    // Process sideEffects: if it's a string, split by comma; if it's already an array, use as is
-    let processedSideEffects: string[] = [];
-    if (typeof validatedData.sideEffects === 'string') {
-      processedSideEffects = validatedData.sideEffects
-        .split(',')
-        .map(s => s.trim())
-        .filter(s => s);
-    } else if (Array.isArray(validatedData.sideEffects)) {
-      processedSideEffects = validatedData.sideEffects.filter(s => s && s.trim());
-    }
-
     const medicine = await PharmacyInventory.create({
       ...validatedData,
-      sideEffects: processedSideEffects,
       expiryDate: new Date(validatedData.expiryDate),
       createdBy: user.id,
     })

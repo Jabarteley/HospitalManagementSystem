@@ -15,16 +15,12 @@ export default function InventoryPage() {
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [formData, setFormData] = useState({
     medicineName: '',
-    genericName: '',
     category: '',
     manufacturer: '',
-    batchNumber: '',
-    expiryDate: '',
     quantity: 0,
     unitPrice: 0,
-    reorderLevel: 10,
-    description: '',
-    sideEffects: '',
+    expiryDate: '',
+    batchNumber: 'B' + Date.now(), // Auto-generate batch number like admin
   })
   const [error, setError] = useState('')
 
@@ -69,9 +65,17 @@ export default function InventoryPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
-          expiryDate: new Date(formData.expiryDate),
-          sideEffects: formData.sideEffects.split(',').map(s => s.trim()).filter(s => s),
+          medicineName: formData.medicineName,
+          category: formData.category,
+          manufacturer: formData.manufacturer,
+          batchNumber: formData.batchNumber,
+          expiryDate: formData.expiryDate,
+          quantity: Number(formData.quantity),
+          unitPrice: Number(formData.unitPrice),
+          genericName: '',
+          reorderLevel: 10,
+          description: '',
+          sideEffects: [],
         }),
       })
 
@@ -81,16 +85,12 @@ export default function InventoryPage() {
         setShowCreateForm(false)
         setFormData({
           medicineName: '',
-          genericName: '',
           category: '',
           manufacturer: '',
-          batchNumber: '',
-          expiryDate: '',
           quantity: 0,
           unitPrice: 0,
-          reorderLevel: 10,
-          description: '',
-          sideEffects: '',
+          expiryDate: '',
+          batchNumber: 'B' + Date.now(),
         })
         fetchInventory() // Refresh the list
       } else {
@@ -154,7 +154,7 @@ export default function InventoryPage() {
               <Input
                 label="Medicine Name"
                 type="text"
-                placeholder="Brand name"
+                placeholder="e.g. Paracetamol"
                 value={formData.medicineName}
                 onChange={(e) =>
                   setFormData({ ...formData, medicineName: e.target.value })
@@ -162,18 +162,9 @@ export default function InventoryPage() {
                 required
               />
               <Input
-                label="Generic Name"
-                type="text"
-                placeholder="Generic name"
-                value={formData.genericName}
-                onChange={(e) =>
-                  setFormData({ ...formData, genericName: e.target.value })
-                }
-              />
-              <Input
                 label="Category"
                 type="text"
-                placeholder="e.g., Antibiotic, Painkiller"
+                placeholder="e.g. Analgesic"
                 value={formData.category}
                 onChange={(e) =>
                   setFormData({ ...formData, category: e.target.value })
@@ -183,29 +174,10 @@ export default function InventoryPage() {
               <Input
                 label="Manufacturer"
                 type="text"
-                placeholder="Manufacturer name"
+                placeholder="e.g. Pharma Inc."
                 value={formData.manufacturer}
                 onChange={(e) =>
                   setFormData({ ...formData, manufacturer: e.target.value })
-                }
-                required
-              />
-              <Input
-                label="Batch Number"
-                type="text"
-                placeholder="Batch number"
-                value={formData.batchNumber}
-                onChange={(e) =>
-                  setFormData({ ...formData, batchNumber: e.target.value })
-                }
-                required
-              />
-              <Input
-                label="Expiry Date"
-                type="date"
-                value={formData.expiryDate}
-                onChange={(e) =>
-                  setFormData({ ...formData, expiryDate: e.target.value })
                 }
                 required
               />
@@ -215,8 +187,7 @@ export default function InventoryPage() {
                 placeholder="100"
                 value={formData.quantity}
                 onChange={(e) =>
-                  setFormData({ ...formData, quantity: e.target.value })
-                }
+                  setFormData({ ...formData, quantity: Number(e.target.value) })}
                 required
               />
               <Input
@@ -225,39 +196,25 @@ export default function InventoryPage() {
                 placeholder="10.50"
                 value={formData.unitPrice}
                 onChange={(e) =>
-                  setFormData({ ...formData, unitPrice: e.target.value })
-                }
+                  setFormData({ ...formData, unitPrice: Number(e.target.value) })}
                 required
               />
               <Input
-                label="Reorder Level"
-                type="number"
-                placeholder="10"
-                value={formData.reorderLevel}
+                label="Expiry Date"
+                type="date"
+                value={formData.expiryDate}
                 onChange={(e) =>
-                  setFormData({ ...formData, reorderLevel: e.target.value })
-                }
+                  setFormData({ ...formData, expiryDate: e.target.value })}
                 required
               />
               <Input
-                label="Side Effects (comma-separated)"
+                label="Batch Number"
                 type="text"
-                placeholder="dizziness, nausea"
-                value={formData.sideEffects}
+                placeholder="Auto-generated"
+                value={formData.batchNumber}
                 onChange={(e) =>
-                  setFormData({ ...formData, sideEffects: e.target.value })
-                }
-                className="md:col-span-2"
-              />
-              <Input
-                label="Description"
-                type="text"
-                placeholder="Medicine description"
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                className="md:col-span-2"
+                  setFormData({ ...formData, batchNumber: e.target.value })}
+                required
               />
 
               <div className="flex space-x-4 pt-4 md:col-span-2">
@@ -275,6 +232,15 @@ export default function InventoryPage() {
                   onClick={() => {
                     setShowCreateForm(false)
                     setError('')
+                    setFormData({
+                      medicineName: '',
+                      category: '',
+                      manufacturer: '',
+                      quantity: 0,
+                      unitPrice: 0,
+                      expiryDate: '',
+                      batchNumber: 'B' + Date.now(),
+                    })
                   }}
                 >
                   Cancel
