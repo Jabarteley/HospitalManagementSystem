@@ -37,6 +37,10 @@ export default function PrescriptionsPage() {
       fetchPrescriptions()
       if (session.user.role === 'admin') {
         fetchPatients()
+        fetchMedicalRecords()
+      } else if (session.user.role === 'doctor') {
+        fetchPatientsByDoctor()
+        fetchMedicalRecordsByDoctor()
       }
     }
   }, [session])
@@ -72,6 +76,49 @@ export default function PrescriptionsPage() {
     }
   }
 
+  const fetchPatientsByDoctor = async () => {
+    try {
+      const response = await fetch('/api/patients')
+      const data = await response.json()
+
+      if (response.ok) {
+        setPatients(data.patients || [])
+      }
+    } catch (error) {
+      console.error('Failed to fetch patients:', error)
+    }
+  }
+
+  const fetchMedicalRecordsByDoctor = async () => {
+    try {
+      const response = await fetch('/api/medical-records')
+      const data = await response.json()
+
+      if (response.ok) {
+        setMedicalRecords(data.records || [])
+      } else {
+        console.error('Failed to fetch medical records:', data.error || 'Unknown error')
+      }
+    } catch (error) {
+      console.error('Failed to fetch medical records:', error)
+    }
+  }
+
+  const fetchMedicalRecords = async () => {
+    try {
+      const response = await fetch('/api/medical-records')
+      const data = await response.json()
+
+      if (response.ok) {
+        setMedicalRecords(data.records || [])
+      } else {
+        console.error('Failed to fetch medical records:', data.error || 'Unknown error')
+      }
+    } catch (error) {
+      console.error('Failed to fetch medical records:', error)
+    }
+  }
+
   const addMedication = () => {
     setFormData({
       ...formData,
@@ -100,6 +147,27 @@ export default function PrescriptionsPage() {
       ...formData,
       medications: newMedications
     })
+  }
+
+  const handleMedicalRecordChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const medicalRecordId = e.target.value;
+    setFormData({ ...formData, medicalRecordId });
+    
+    // For doctors, when medical record is selected, also set the patientId from the record
+    if (session.user.role === 'doctor') {
+      const selectedRecord = medicalRecords.find(record => record._id === medicalRecordId);
+      if (selectedRecord && selectedRecord.patientId) {
+        setFormData({
+          ...formData,
+          medicalRecordId,
+          patientId: typeof selectedRecord.patientId === 'object' 
+            ? selectedRecord.patientId._id 
+            : selectedRecord.patientId
+        });
+      }
+    } else {
+      setFormData({ ...formData, medicalRecordId });
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -252,12 +320,22 @@ export default function PrescriptionsPage() {
                   <select
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     value={formData.medicalRecordId}
-                    onChange={(e) =>
-                      setFormData({ ...formData, medicalRecordId: e.target.value })
-                    }
+                    onChange={handleMedicalRecordChange}
                     required
                   >
                     <option value="">Select Medical Record</option>
+                    {medicalRecords
+                      .filter(record => {
+                        // For admin, show all records
+                        if (session.user.role === 'admin') return true;
+                        // For doctor, show records related to the selected patient
+                        return formData.patientId ? record.patientId?._id === formData.patientId : true;
+                      })
+                      .map(record => (
+                        <option key={record._id} value={record._id}>
+                          {record.patientId?.firstName} {record.patientId?.lastName} - {new Date(record.visitDate).toLocaleDateString()} - {record.diagnosis}
+                        </option>
+                      ))}
                   </select>
                 </div>
                 
