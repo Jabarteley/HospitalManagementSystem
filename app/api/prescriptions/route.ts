@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
     let query: any = {}
 
     if (user.role === 'pharmacist') {
-      query.status = { $ne: 'completed' } // Only active prescriptions for pharmacist
+      query.status = { $in: ['pending'] } // Only pending prescriptions for pharmacist to process
     }
 
     const prescriptions = await Prescription.find(query)

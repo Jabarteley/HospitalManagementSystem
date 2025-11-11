@@ -2,7 +2,7 @@
 
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Activity, FileText, Users, Calendar, Pill, Package, Download, BarChart3 } from 'lucide-react'
 import { signOut } from 'next-auth/react'
 
@@ -118,10 +118,46 @@ export default function ReportsPage() {
 
   const availableReports = getAvailableReports()
 
-  const handleGenerateReport = (reportType: string) => {
-    // In a real implementation, this would call an API to generate the report
-    // For now, let's just show an alert
-    alert(`Generating report: ${reportType}`);
+  const [generatingReport, setGeneratingReport] = useState<string | null>(null);
+  const [reportData, setReportData] = useState<any>(null);
+  const [reportError, setReportError] = useState<string | null>(null);
+
+  const handleGenerateReport = async (reportType: string) => {
+    setGeneratingReport(reportType);
+    setReportError(null);
+    
+    try {
+      const response = await fetch(`/api/reports?type=${reportType}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate report');
+      }
+
+      const data = await response.json();
+      setReportData(data);
+      
+      // Create a downloadable file
+      const jsonString = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${reportType}-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      setReportError(error.message);
+    } finally {
+      setGeneratingReport(null);
+    }
   }
 
   return (
@@ -155,15 +191,35 @@ export default function ReportsPage() {
                 </p>
                 <button
                   onClick={() => handleGenerateReport(report.reportType)}
-                  className="w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={generatingReport === report.reportType}
+                  className={`w-full flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white ${
+                    generatingReport === report.reportType 
+                      ? 'bg-blue-400' 
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  } focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500`}
                 >
-                  <Download className="w-4 h-4 mr-2" />
-                  Generate Report
+                  {generatingReport === report.reportType ? (
+                    <>
+                      <Activity className="w-4 h-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4 mr-2" />
+                      Generate Report
+                    </>
+                  )}
                 </button>
               </div>
             )
           })}
         </div>
+
+        {reportError && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-red-600">{reportError}</p>
+          </div>
+        )}
 
         {availableReports.length === 0 && (
           <div className="text-center py-12">

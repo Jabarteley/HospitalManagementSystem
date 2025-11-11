@@ -16,7 +16,7 @@ const createMedicineSchema = z.object({
   unitPrice: z.number().min(0, 'Unit price cannot be negative'),
   reorderLevel: z.number().min(0, 'Reorder level cannot be negative').default(10),
   description: z.string().optional(),
-  sideEffects: z.array(z.string()).optional(),
+  sideEffects: z.string().optional(), // Accept as string, convert to array in the route
 })
 
 export async function GET(req: NextRequest) {
@@ -52,8 +52,20 @@ export async function POST(req: NextRequest) {
 
     await dbConnect()
 
+    // Process sideEffects: if it's a string, split by comma; if it's already an array, use as is
+    let processedSideEffects: string[] = [];
+    if (typeof validatedData.sideEffects === 'string') {
+      processedSideEffects = validatedData.sideEffects
+        .split(',')
+        .map(s => s.trim())
+        .filter(s => s);
+    } else if (Array.isArray(validatedData.sideEffects)) {
+      processedSideEffects = validatedData.sideEffects.filter(s => s && s.trim());
+    }
+
     const medicine = await PharmacyInventory.create({
       ...validatedData,
+      sideEffects: processedSideEffects,
       expiryDate: new Date(validatedData.expiryDate),
       createdBy: user.id,
     })

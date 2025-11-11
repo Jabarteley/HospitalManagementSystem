@@ -143,12 +143,18 @@ export default function PharmacyPrescriptionsPage() {
     setError('')
 
     try {
+      // Only admins and doctors can create prescriptions
+      if (session.user.role !== 'admin' && session.user.role !== 'doctor') {
+        setError('Only doctors and admins can issue prescriptions')
+        return
+      }
+
       const response = await fetch('/api/prescriptions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          doctorId: session.user.id, // Use the logged-in pharmacist's ID as the issuer
+          doctorId: session.user.id, // Use the logged-in doctor's ID as the issuer
         }),
       })
 
@@ -168,6 +174,57 @@ export default function PharmacyPrescriptionsPage() {
       }
     } catch (error) {
       setError('An error occurred while creating prescription')
+    }
+  }
+
+  const updatePrescriptionStatus = async (prescriptionId, newStatus) => {
+    try {
+      const response = await fetch(`/api/prescriptions/${prescriptionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: newStatus
+        }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        fetchPrescriptions(); // Refresh the list
+        return true;
+      } else {
+        setError(data.error || 'Failed to update prescription')
+        return false;
+      }
+    } catch (error) {
+      setError('An error occurred while updating prescription')
+      return false;
+    }
+  }
+
+  const handleApprove = async (prescriptionId) => {
+    // Only pharmacists and admins can approve/dispense prescriptions
+    if (session.user.role !== 'pharmacist' && session.user.role !== 'admin') {
+      setError('Only pharmacists and admins can approve prescriptions');
+      return;
+    }
+    
+    const success = await updatePrescriptionStatus(prescriptionId, 'dispensed');
+    if (success) {
+      // Optionally show success message
+    }
+  }
+
+  const handleCancel = async (prescriptionId) => {
+    // Only pharmacists and admins can cancel prescriptions
+    if (session.user.role !== 'pharmacist' && session.user.role !== 'admin') {
+      setError('Only pharmacists and admins can cancel prescriptions');
+      return;
+    }
+    
+    const success = await updatePrescriptionStatus(prescriptionId, 'canceled');
+    if (success) {
+      // Optionally show success message
     }
   }
 
@@ -198,7 +255,7 @@ export default function PharmacyPrescriptionsPage() {
       <div className="bg-white rounded-xl shadow-md p-6 mb-8">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-semibold text-gray-900">Prescriptions</h3>
-          {(session.user.role === 'admin' || session.user.role === 'pharmacist') && (
+          {(session.user.role === 'admin' || session.user.role === 'doctor') && (
             <Button
               variant="primary"
               size="md"
@@ -445,19 +502,32 @@ export default function PharmacyPrescriptionsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="mr-2"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      {prescription.status === 'pending' && 
+                       (session.user.role === 'pharmacist' || session.user.role === 'admin') ? (
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="success"
+                            size="sm"
+                            onClick={() => handleApprove(prescription._id)}
+                            className="flex items-center space-x-1"
+                          >
+                            <span>Approve</span>
+                          </Button>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => handleCancel(prescription._id)}
+                            className="flex items-center space-x-1"
+                          >
+                            <span>Cancel</span>
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500">
+                          {prescription.status === 'dispensed' ? 'Dispensed' : 
+                           prescription.status === 'canceled' ? 'Canceled' : 'Pending'}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}

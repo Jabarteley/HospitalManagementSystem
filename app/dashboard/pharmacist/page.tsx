@@ -33,7 +33,7 @@ export default function PharmacistDashboardPage() {
     try {
       setLoading(true)
       
-      // Fetch prescriptions for the pharmacist
+      // Fetch prescriptions for the pharmacist (only pending ones)
       const prescriptionResponse = await fetch('/api/prescriptions')
       if (prescriptionResponse.ok) {
         const prescriptionData = await prescriptionResponse.json()
