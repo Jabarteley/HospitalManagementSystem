@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import dbConnect from '@/lib/mongodb'
 import Prescription from '@/models/Prescription'
+import Patient from '@/models/Patient'  // Import to ensure Patient model is registered
+import User from '@/models/User'      // Import to ensure User model is registered
+import Doctor from '@/models/Doctor'  // Import to ensure Doctor model is registered
+import MedicalRecord from '@/models/MedicalRecord'  // Import to ensure MedicalRecord model is registered
 import { requireAuth } from '@/lib/session'
 import { createAuditLog } from '@/utils/auditLogger'
 
@@ -34,12 +38,34 @@ export async function GET(req: NextRequest) {
     }
 
     const prescriptions = await Prescription.find(query)
-      .populate('patientId', 'firstName lastName email')
+      .populate({
+        path: 'patientId',
+        populate: {
+          path: 'userId',
+          select: 'firstName lastName email'
+        }
+      })
       .populate('doctorId', 'firstName lastName email')
       .populate('medicalRecordId', 'visitDate diagnosis')
       .sort({ issuedDate: -1 })
 
-    return NextResponse.json({ prescriptions }, { status: 200 })
+    // Transform the data to extract patient user info at the top level for easier access
+    const transformedPrescriptions = prescriptions.map(prescription => {
+      const populatedPatient = (prescription as any).patientId;
+      return {
+        ...prescription.toObject(),
+        patientInfo: populatedPatient?.userId ? {
+          _id: populatedPatient.userId._id,
+          firstName: populatedPatient.userId.firstName,
+          lastName: populatedPatient.userId.lastName,
+          email: populatedPatient.userId.email
+        } : null,
+        // Remove the nested patientId to avoid confusion
+        patientId: populatedPatient?._id || prescription.patientId
+      };
+    });
+
+    return NextResponse.json({ prescriptions: transformedPrescriptions }, { status: 200 })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Forbidden') {
       return NextResponse.json({ error: error.message }, { status: 403 })
