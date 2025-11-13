@@ -48,7 +48,7 @@ export default function PatientLayout({
     { name: 'Dashboard', href: '/dashboard/patient', icon: Home },
     { name: 'Appointments', href: '/appointments', icon: Calendar },
     { name: 'Medical Records', href: '/medical-records', icon: FileText },
-    { name: 'Prescriptions', href: '/pharmacy', icon: Pill },
+    { name: 'Prescriptions', href: '/pharmacy/prescriptions', icon: Pill },
     { name: 'Billing', href: '/billing', icon: CreditCard },
   ]
 

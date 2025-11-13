@@ -191,7 +191,7 @@ export default function AppointmentsPage() {
         <div className="bg-white rounded-xl shadow-md p-6 mb-8">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Appointments</h3>
-            {(isAdminOrNurse || isPatient) && ( // Patients can also schedule their own appointments
+            {(session?.user?.role === 'admin') && (
               <Button
                 variant="primary"
                 size="md"
@@ -204,7 +204,7 @@ export default function AppointmentsPage() {
             )}
           </div>
 
-          {showCreateForm && (
+          {showCreateForm && session?.user?.role === 'admin' && (
             <div className="mb-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
               <h3 className="text-lg font-semibold text-blue-900 mb-4">
                 Schedule New Appointment
