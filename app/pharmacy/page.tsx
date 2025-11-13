@@ -13,11 +13,14 @@ export default function PharmacyPage() {
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/login')
-    } else if (status === 'authenticated' && !['admin', 'pharmacist'].includes(session.user.role)) {
+    } else if (status === 'authenticated' && !['admin', 'pharmacist', 'patient'].includes(session.user.role)) {
       router.push('/dashboard')
     } else if (status === 'authenticated' && ['admin', 'pharmacist'].includes(session.user.role)) {
-      // Redirect to the inventory page by default
+      // Redirect to the inventory page by default for admins and pharmacists
       router.push('/pharmacy/inventory')
+    } else if (status === 'authenticated' && session.user.role === 'patient') {
+      // Redirect to the prescriptions page by default for patients
+      router.push('/pharmacy/prescriptions')
     }
   }, [status, router, session])
 
@@ -32,7 +35,7 @@ export default function PharmacyPage() {
     )
   }
 
-  if (!session || !['admin', 'pharmacist'].includes(session.user.role)) {
+  if (!session || !['admin', 'pharmacist', 'patient'].includes(session.user.role)) {
     return null
   }
 

@@ -18,7 +18,7 @@ export default function PharmacyLayout({
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/login');
-    } else if (status === 'authenticated' && !['admin', 'pharmacist'].includes(session.user.role)) {
+    } else if (status === 'authenticated' && !['admin', 'pharmacist', 'patient'].includes(session.user.role)) {
       router.push('/dashboard');
     }
   }, [status, router, session]);
@@ -34,7 +34,7 @@ export default function PharmacyLayout({
     );
   }
 
-  if (!session || !['admin', 'pharmacist'].includes(session.user.role)) {
+  if (!session || !['admin', 'pharmacist', 'patient'].includes(session.user.role)) {
     return null;
   }
 
@@ -43,23 +43,31 @@ export default function PharmacyLayout({
     {
       title: 'Dashboard',
       icon: LayoutDashboard,
-      href: session.user.role === 'admin' ? '/dashboard' : '/dashboard/pharmacist',
+      href: session.user.role === 'admin' 
+        ? '/dashboard' 
+        : session.user.role === 'pharmacist'
+        ? '/dashboard/pharmacist'
+        : '/dashboard/patient',
     },
     {
       title: 'Prescriptions',
       icon: Pill,
       href: '/pharmacy/prescriptions',
     },
-    {
-      title: 'Inventory',
-      icon: Package,
-      href: '/pharmacy/inventory',
-    },
-    {
-      title: 'Reports',
-      icon: FileText,
-      href: '/reports',
-    },
+    ...(session.user.role !== 'patient' ? [
+      {
+        title: 'Inventory',
+        icon: Package,
+        href: '/pharmacy/inventory',
+      }
+    ] : []),
+    ...(session.user.role !== 'patient' ? [
+      {
+        title: 'Reports',
+        icon: FileText,
+        href: '/reports',
+      }
+    ] : []),
   ];
 
   const handleLogout = async () => {
@@ -192,7 +200,7 @@ export default function PharmacyLayout({
               </button>
               <div className="flex-1 px-4 md:px-0">
                 <h1 className="text-lg font-semibold text-gray-900">
-                  Pharmacy Management
+                  {session.user.role === 'patient' ? 'My Prescriptions' : 'Pharmacy Management'}
                 </h1>
               </div>
             </div>

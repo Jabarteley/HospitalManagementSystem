@@ -84,38 +84,7 @@ export default function PatientDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Activity className="w-8 h-8 text-blue-600" />
-            <h1 className="text-xl font-bold text-gray-900">
-              Hospital Management System
-            </h1>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="text-right">
-              <p className="text-sm font-medium text-gray-900">
-                {session.user.firstName} {session.user.lastName}
-              </p>
-              <p className="text-xs text-gray-500 capitalize">
-                {session.user.role}
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleLogout}
-              className="flex items-center space-x-2"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Logout</span>
-            </Button>
-          </div>
-        </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
             Welcome, {session.user.firstName}!
@@ -291,7 +260,6 @@ export default function PatientDashboardPage() {
             </Button>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
   )
 }

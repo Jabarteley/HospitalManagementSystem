@@ -26,13 +26,13 @@ export default function PharmacyPrescriptionsPage() {
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/login')
-    } else if (status === 'authenticated' && !['admin', 'pharmacist'].includes(session.user.role)) {
+    } else if (status === 'authenticated' && !['admin', 'pharmacist', 'patient'].includes(session.user.role)) {
       router.push('/dashboard')
     }
   }, [status, router, session])
 
   useEffect(() => {
-    if (session?.user?.role && ['admin', 'pharmacist'].includes(session.user.role)) {
+    if (session?.user?.role && ['admin', 'pharmacist', 'patient'].includes(session.user.role)) {
       fetchPrescriptions()
       if (session.user.role === 'admin') {
         fetchPatients()
@@ -247,15 +247,17 @@ export default function PharmacyPrescriptionsPage() {
     <div className="max-w-7xl mx-auto px-4 py-8">
       <div className="mb-8">
         <h2 className="text-3xl font-bold text-gray-900 mb-2">
-          Prescription Management
+          {session.user.role === 'patient' ? 'My Prescriptions' : 'Prescription Management'}
         </h2>
-        <p className="text-gray-600">Manage and dispense prescriptions</p>
+        <p className="text-gray-600">
+          {session.user.role === 'patient' ? 'View your prescriptions' : 'Manage and dispense prescriptions'}
+        </p>
       </div>
 
       <div className="bg-white rounded-xl shadow-md p-6 mb-8">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-semibold text-gray-900">Prescriptions</h3>
-          {(session.user.role === 'admin' || session.user.role === 'doctor') && (
+          {(session.user.role !== 'patient') && (
             <Button
               variant="primary"
               size="md"
@@ -268,7 +270,7 @@ export default function PharmacyPrescriptionsPage() {
           )}
         </div>
 
-        {showCreateForm && (
+        {(session.user.role !== 'patient') && showCreateForm && (
           <div className="mb-8 p-6 bg-blue-50 rounded-lg border border-blue-200">
             <h3 className="text-lg font-semibold text-blue-900 mb-4">
               Issue New Prescription

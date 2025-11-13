@@ -27,7 +27,7 @@ const createPrescriptionSchema = z.object({
 
 export async function GET(req: NextRequest) {
   try {
-    const user = await requireAuth(['admin', 'doctor', 'pharmacist'])
+    const user = await requireAuth(['admin', 'doctor', 'pharmacist', 'patient'])
 
     await dbConnect()
 
@@ -35,6 +35,13 @@ export async function GET(req: NextRequest) {
 
     if (user.role === 'pharmacist') {
       query.status = { $in: ['pending'] } // Only pending prescriptions for pharmacist to process
+    } else if (user.role === 'patient') {
+      // Patients can only see their own prescriptions
+      const patient = await Patient.findOne({ userId: user.id })
+      if (!patient) {
+        return NextResponse.json({ prescriptions: [] }, { status: 200 })
+      }
+      query.patientId = patient._id
     }
 
     const prescriptions = await Prescription.find(query)

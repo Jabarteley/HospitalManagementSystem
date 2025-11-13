@@ -3,11 +3,11 @@
 import { useSession } from 'next-auth/react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Activity, Calendar, FileText, Pill, Users, LogOut, Menu, X, Home } from 'lucide-react'
+import { Activity, Calendar, FileText, Pill, Users, LogOut, Menu, X, Home, CreditCard } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import { signOut } from 'next-auth/react'
 
-export default function AppointmentsLayout({
+export default function PatientLayout({
   children,
 }: {
   children: React.ReactNode
@@ -16,6 +16,13 @@ export default function AppointmentsLayout({
   const router = useRouter()
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+
+  // Redirect non-patients
+  useEffect(() => {
+    if (status === 'authenticated' && session.user.role !== 'patient') {
+      router.push('/dashboard')
+    }
+  }, [status, session, router])
 
   if (status === 'loading') {
     return (
@@ -28,54 +35,26 @@ export default function AppointmentsLayout({
     )
   }
 
-  // If not authenticated or not authorized to view appointments, redirect to login
-  if (!session || !['doctor', 'admin', 'nurse', 'patient'].includes(session.user.role)) {
+  // If not authenticated or not a patient, redirect to login
+  if (!session || session.user.role !== 'patient') {
     if (typeof window !== 'undefined') {
       router.push('/auth/login')
     }
     return null
   }
 
-  // Navigation items based on user role
-  const getNavItems = () => {
-    if (session.user.role === 'admin') {
-      return [
-        { name: 'Dashboard', href: '/dashboard/admin', icon: Home },
-        { name: 'Users', href: '/dashboard/admin/users', icon: Users },
-        { name: 'Patients', href: '/dashboard/admin/patients', icon: Users },
-        { name: 'Appointments', href: '/appointments', icon: Calendar },
-        { name: 'Medical Records', href: '/medical-records', icon: FileText },
-        { name: 'Prescriptions', href: '/prescriptions', icon: Pill },
-        { name: 'Pharmacy', href: '/pharmacy', icon: Pill },
-      ]
-    } else if (session.user.role === 'doctor') {
-      return [
-        { name: 'Dashboard', href: '/dashboard/doctor', icon: Home },
-        { name: 'Appointments', href: '/appointments', icon: Calendar },
-        { name: 'Medical Records', href: '/medical-records', icon: FileText },
-        { name: 'Prescriptions', href: '/prescriptions', icon: Pill },
-        { name: 'Patients', href: '/patients', icon: Users },
-      ]
-    } else if (session.user.role === 'patient') {
-      return [
-        { name: 'Dashboard', href: '/dashboard/patient', icon: Home },
-        { name: 'Appointments', href: '/appointments', icon: Calendar },
-        { name: 'Medical Records', href: '/medical-records', icon: FileText },
-        { name: 'Prescriptions', href: '/pharmacy', icon: Pill },
-      ]
-    } else { // nurse or other roles that can access appointments
-      return [
-        { name: 'Dashboard', href: '/dashboard', icon: Home },
-        { name: 'Appointments', href: '/appointments', icon: Calendar },
-      ]
-    }
-  }
-
-  const navItems = getNavItems()
+  // Navigation items for patients
+  const navItems = [
+    { name: 'Dashboard', href: '/dashboard/patient', icon: Home },
+    { name: 'Appointments', href: '/appointments', icon: Calendar },
+    { name: 'Medical Records', href: '/medical-records', icon: FileText },
+    { name: 'Prescriptions', href: '/pharmacy', icon: Pill },
+    { name: 'Billing', href: '/billing', icon: CreditCard },
+  ]
 
   // Determine active navigation item based on current path
   const isActive = (path: string) => {
-    if (path === '/dashboard/doctor' || path === '/dashboard/admin' || path === '/dashboard') {
+    if (path === '/dashboard/patient') {
       return pathname === path
     }
     return pathname.startsWith(path)
@@ -121,7 +100,7 @@ export default function AppointmentsLayout({
               <h1 className="text-lg font-bold text-gray-900">Hospital Management</h1>
             </div>
           </div>
-          
+
           <nav className="p-4 mt-12">
             <div className="mb-6">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Navigation</p>
@@ -147,7 +126,7 @@ export default function AppointmentsLayout({
               </ul>
             </div>
           </nav>
-          
+
           <div className="absolute bottom-0 w-64 p-4 border-t">
             <div className="flex items-center justify-between">
               <div>
@@ -172,14 +151,14 @@ export default function AppointmentsLayout({
 
         {/* Mobile sidebar overlay */}
         {sidebarOpen && (
-          <div 
+          <div
             className="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden"
             onClick={() => setSidebarOpen(false)}
           ></div>
         )}
 
         {/* Mobile sidebar */}
-        <aside 
+        <aside
           className={`fixed top-0 left-0 bottom-0 z-50 w-64 bg-white shadow-lg transform ${
             sidebarOpen ? 'translate-x-0' : '-translate-x-full'
           } transition-transform duration-300 ease-in-out md:hidden`}
@@ -196,7 +175,7 @@ export default function AppointmentsLayout({
               <X className="w-6 h-6" />
             </button>
           </div>
-          
+
           <nav className="p-4">
             <div className="mb-6">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">Navigation</p>
@@ -223,7 +202,7 @@ export default function AppointmentsLayout({
               </ul>
             </div>
           </nav>
-          
+
           <div className="absolute bottom-0 w-full p-4 border-t">
             <div className="flex items-center justify-between">
               <div>

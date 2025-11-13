@@ -3,25 +3,16 @@
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Activity, Calendar, FileText, Pill, Users, LogOut, Package } from 'lucide-react'
+import { Activity, FileText, Pill, Package } from 'lucide-react'
 import Button from '@/components/ui/Button'
-import { signOut } from 'next-auth/react'
 
 export default function PharmacistDashboardPage() {
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const router = useRouter()
   const [prescriptions, setPrescriptions] = useState([])
   const [inventory, setInventory] = useState([])
   const [lowStockItems, setLowStockItems] = useState([])
   const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/login')
-    } else if (status === 'authenticated' && session.user.role !== 'pharmacist') {
-      router.push('/dashboard')
-    }
-  }, [status, router, session])
 
   useEffect(() => {
     if (session?.user?.role === 'pharmacist') {
@@ -30,24 +21,22 @@ export default function PharmacistDashboardPage() {
   }, [session])
 
   const fetchPharmacistData = async () => {
+    setLoading(true)
     try {
-      setLoading(true)
-      
-      // Fetch prescriptions for the pharmacist (only pending ones)
-      const prescriptionResponse = await fetch('/api/prescriptions')
+      const [prescriptionResponse, inventoryResponse] = await Promise.all([
+        fetch('/api/prescriptions'),
+        fetch('/api/pharmacy/inventory')
+      ]);
+
       if (prescriptionResponse.ok) {
         const prescriptionData = await prescriptionResponse.json()
-        setPrescriptions(prescriptionData.prescriptions)
+        setPrescriptions(prescriptionData.prescriptions || [])
       }
 
-      // Fetch pharmacy inventory
-      const inventoryResponse = await fetch('/api/pharmacy/inventory')
       if (inventoryResponse.ok) {
         const inventoryData = await inventoryResponse.json()
-        setInventory(inventoryData.inventory)
-        
-        // Get low stock items
-        const lowStock = inventoryData.inventory.filter(item => item.isLowStock)
+        setInventory(inventoryData.inventory || [])
+        const lowStock = (inventoryData.inventory || []).filter(item => item.isLowStock)
         setLowStockItems(lowStock)
       }
     } catch (error) {
@@ -57,13 +46,9 @@ export default function PharmacistDashboardPage() {
     }
   }
 
-  const handleLogout = async () => {
-    await signOut({ callbackUrl: '/' })
-  }
-
-  if (status === 'loading' || loading) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center p-12">
         <div className="text-center">
           <Activity className="w-12 h-12 text-blue-600 animate-pulse mx-auto mb-4" />
           <p className="text-gray-600">Loading...</p>
@@ -72,46 +57,11 @@ export default function PharmacistDashboardPage() {
     )
   }
 
-  if (!session || session.user.role !== 'pharmacist') {
-    return null
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Activity className="w-8 h-8 text-blue-600" />
-            <h1 className="text-xl font-bold text-gray-900">
-              Hospital Management System
-            </h1>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="text-right">
-              <p className="text-sm font-medium text-gray-900">
-                {session.user.firstName} {session.user.lastName}
-              </p>
-              <p className="text-xs text-gray-500 capitalize">
-                {session.user.role}
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleLogout}
-              className="flex items-center space-x-2"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Logout</span>
-            </Button>
-          </div>
-        </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto px-4 py-8">
+    <>
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome, {session.user.firstName}!
+            Welcome, {session?.user.firstName}!
           </h2>
           <p className="text-gray-600">
             Pharmacy management dashboard
@@ -192,7 +142,7 @@ export default function PharmacistDashboardPage() {
                 {prescriptions
                   .filter(p => p.status === 'pending')
                   .slice(0, 5)
-                  .map((prescription) => (
+                  .map((prescription: any) => (
                     <div key={prescription._id} className="border-l-4 border-blue-500 pl-4 py-2">
                       <div className="flex justify-between">
                         <h4 className="font-medium text-gray-900">
@@ -232,7 +182,7 @@ export default function PharmacistDashboardPage() {
             </h3>
             {lowStockItems.length > 0 ? (
               <div className="space-y-4">
-                {lowStockItems.slice(0, 5).map((item) => (
+                {lowStockItems.slice(0, 5).map((item: any) => (
                   <div key={item._id} className="border-l-4 border-red-500 pl-4 py-2">
                     <div className="flex justify-between">
                       <h4 className="font-medium text-gray-900">
@@ -296,7 +246,6 @@ export default function PharmacistDashboardPage() {
             </Button>
           </div>
         </div>
-      </main>
-    </div>
+    </>
   )
 }
