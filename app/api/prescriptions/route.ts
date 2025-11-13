@@ -31,48 +31,75 @@ export async function GET(req: NextRequest) {
 
     await dbConnect()
 
-    let query: any = {}
+    const aggregation: any = []
 
     if (user.role === 'pharmacist') {
-      query.status = { $in: ['pending'] } // Only pending prescriptions for pharmacist to process
+      aggregation.push({ $match: { status: { $in: ['pending'] } } })
     } else if (user.role === 'patient') {
-      // Patients can only see their own prescriptions
       const patient = await Patient.findOne({ userId: user.id })
       if (!patient) {
         return NextResponse.json({ prescriptions: [] }, { status: 200 })
       }
-      query.patientId = patient._id
+      aggregation.push({ $match: { patientId: patient._id } })
     }
 
-    const prescriptions = await Prescription.find(query)
-      .populate({
-        path: 'patientId',
-        populate: {
-          path: 'userId',
-          select: 'firstName lastName email'
-        }
-      })
-      .populate('doctorId', 'firstName lastName email')
-      .populate('medicalRecordId', 'visitDate diagnosis')
-      .sort({ issuedDate: -1 })
+    aggregation.push(
+      { $sort: { issuedDate: -1 } },
+      {
+        $lookup: {
+          from: 'patients',
+          localField: 'patientId',
+          foreignField: '_id',
+          as: 'patientInfo',
+        },
+      },
+      { $unwind: { path: '$patientInfo', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'patientInfo.userId',
+          foreignField: '_id',
+          as: 'patient',
+        },
+      },
+      { $unwind: { path: '$patient', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'doctors',
+          localField: 'doctorId',
+          foreignField: '_id',
+          as: 'doctorInfo',
+        },
+      },
+      { $unwind: { path: '$doctorInfo', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'doctorInfo.userId',
+          foreignField: '_id',
+          as: 'doctor',
+        },
+      },
+      { $unwind: { path: '$doctor', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          'patient.password': 0,
+          'patient.emailVerified': 0,
+          'patient.createdAt': 0,
+          'patient.updatedAt': 0,
+          'doctor.password': 0,
+          'doctor.emailVerified': 0,
+          'doctor.createdAt': 0,
+          'doctor.updatedAt': 0,
+          patientInfo: 0,
+          doctorInfo: 0,
+        },
+      }
+    )
 
-    // Transform the data to extract patient user info at the top level for easier access
-    const transformedPrescriptions = prescriptions.map(prescription => {
-      const populatedPatient = (prescription as any).patientId;
-      return {
-        ...prescription.toObject(),
-        patientInfo: populatedPatient?.userId ? {
-          _id: populatedPatient.userId._id,
-          firstName: populatedPatient.userId.firstName,
-          lastName: populatedPatient.userId.lastName,
-          email: populatedPatient.userId.email
-        } : null,
-        // Remove the nested patientId to avoid confusion
-        patientId: populatedPatient?._id || prescription.patientId
-      };
-    });
+    const prescriptions = await Prescription.aggregate(aggregation)
 
-    return NextResponse.json({ prescriptions: transformedPrescriptions }, { status: 200 })
+    return NextResponse.json({ prescriptions }, { status: 200 })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Forbidden') {
       return NextResponse.json({ error: error.message }, { status: 403 })

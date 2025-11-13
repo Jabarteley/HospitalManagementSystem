@@ -28,58 +28,79 @@ export async function GET(req: NextRequest) {
 
     await dbConnect()
 
-    let query: any = {}
+    const aggregation: any = []
 
     if (user.role === 'doctor') {
-      // For doctors, find their doctor profile and use that ID
-      const doctor = await Doctor.findOne({ userId: user.id });
+      const doctor = await Doctor.findOne({ userId: user.id })
       if (!doctor) {
-        console.log('Doctor profile not found for user ID:', user.id)
         return NextResponse.json({ records: [] }, { status: 200 })
       }
-      console.log('Looking for records for doctor ID:', doctor._id.toString())
-      query.doctorId = doctor._id
+      aggregation.push({ $match: { doctorId: doctor._id } })
     } else if (user.role === 'patient') {
-      // Patients can only see their own records
       const patient = await Patient.findOne({ userId: user.id })
       if (!patient) {
         return NextResponse.json({ records: [] }, { status: 200 })
       }
-      query.patientId = patient._id
+      aggregation.push({ $match: { patientId: patient._id } })
     }
 
-    // Fetch records with populated references
-    const records = await MedicalRecord.find(query)
-      .populate('patientId')
-      .populate('doctorId')
-      .populate('appointmentId', 'appointmentDate reason')
-      .sort({ visitDate: -1 })
-
-    // Add patient and doctor names to the response
-    const recordsWithDetails = []
-    for (const record of records) {
-      const recordObj = record.toObject()
-      
-      // Get patient user details
-      let patientUser = null;
-      if (recordObj.patientId && recordObj.patientId.userId) {
-        patientUser = await User.findById(recordObj.patientId.userId).select('firstName lastName email _id');
+    aggregation.push(
+      { $sort: { visitDate: -1 } },
+      {
+        $lookup: {
+          from: 'patients',
+          localField: 'patientId',
+          foreignField: '_id',
+          as: 'patientInfo',
+        },
+      },
+      { $unwind: { path: '$patientInfo', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'patientInfo.userId',
+          foreignField: '_id',
+          as: 'patient',
+        },
+      },
+      { $unwind: { path: '$patient', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'doctors',
+          localField: 'doctorId',
+          foreignField: '_id',
+          as: 'doctorInfo',
+        },
+      },
+      { $unwind: { path: '$doctorInfo', preserveNullAndEmptyArrays: true } },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'doctorInfo.userId',
+          foreignField: '_id',
+          as: 'doctor',
+        },
+      },
+      { $unwind: { path: '$doctor', preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          'patient.password': 0,
+          'patient.emailVerified': 0,
+          'patient.createdAt': 0,
+          'patient.updatedAt': 0,
+          'doctor.password': 0,
+          'doctor.emailVerified': 0,
+          'doctor.createdAt': 0,
+          'doctor.updatedAt': 0,
+          patientInfo: 0,
+          doctorInfo: 0,
+        },
       }
+    )
 
-      // Get doctor user details
-      let doctorUser = null;
-      if (recordObj.doctorId && recordObj.doctorId.userId) {
-        doctorUser = await User.findById(recordObj.doctorId.userId).select('firstName lastName email _id');
-      }
+    const records = await MedicalRecord.aggregate(aggregation)
 
-      recordsWithDetails.push({
-        ...recordObj,
-        patient: patientUser,
-        doctor: doctorUser,
-      })
-    }
-
-    return NextResponse.json({ records: recordsWithDetails }, { status: 200 })
+    return NextResponse.json({ records }, { status: 200 })
   } catch (error: any) {
     if (error.message === 'Unauthorized' || error.message === 'Forbidden') {
       return NextResponse.json({ error: error.message }, { status: 403 })

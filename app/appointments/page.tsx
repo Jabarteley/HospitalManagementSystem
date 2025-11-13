@@ -3,10 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { Calendar, Plus, Edit, Trash2, Users, FileText, Pill, Activity, LogOut } from 'lucide-react'
+import { Calendar, Plus, Edit, Trash2, Users, FileText, Pill, Activity } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import { signOut } from 'next-auth/react'
 
 export default function AppointmentsPage() {
   const { data: session, status } = useSession()
@@ -27,6 +26,10 @@ export default function AppointmentsPage() {
   })
   const [error, setError] = useState('')
 
+  const isPatient = session?.user?.role === 'patient'
+  const isAdminOrNurse = session?.user?.role === 'admin' || session?.user?.role === 'nurse'
+  const isDoctor = session?.user?.role === 'doctor'
+
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/login')
@@ -36,14 +39,22 @@ export default function AppointmentsPage() {
   }, [status, router, session])
 
   useEffect(() => {
-    if (session?.user?.role && ['admin', 'doctor', 'patient', 'nurse'].includes(session.user.role)) {
+    if (session?.user?.role) {
       fetchAppointments()
-      if (session.user.role === 'admin' || session.user.role === 'nurse') {
+      if (isAdminOrNurse) {
         fetchPatients()
         fetchDoctors()
       }
     }
   }, [session])
+
+  useEffect(() => {
+    if (isPatient && session?.user?.id) {
+      // When a patient opens the form, pre-fill their patientId
+      setFormData(prev => ({ ...prev, patientId: session.user.id }));
+    }
+  }, [isPatient, session?.user?.id, showCreateForm]);
+
 
   const fetchAppointments = async () => {
     try {
@@ -89,17 +100,19 @@ export default function AppointmentsPage() {
     }
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
     try {
+      const payload = isPatient ? { ...formData, patientId: session?.user?.id } : formData;
+
       const response = await fetch('/api/appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
-          appointmentDate: new Date(formData.appointmentDate),
+          ...payload,
+          appointmentDate: new Date(payload.appointmentDate),
           status: 'pending'
         }),
       })
@@ -109,7 +122,7 @@ export default function AppointmentsPage() {
       if (response.ok) {
         setShowCreateForm(false)
         setFormData({
-          patientId: '',
+          patientId: isPatient && session?.user?.id ? session.user.id : '',
           doctorId: '',
           appointmentDate: '',
           startTime: '',
@@ -126,15 +139,14 @@ export default function AppointmentsPage() {
     }
   }
 
-  const updateAppointmentStatus = async (appointmentId: string, status: string) => {
+  const updateAppointmentStatus = async (appointmentId: string, newStatus: string) => {
     try {
       const response = await fetch('/api/appointments', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           appointmentId, 
-          status,
-          ...(status === 'completed' && { status }) // Only update status to completed if that's the target
+          status: newStatus,
         }),
       })
 
@@ -148,10 +160,6 @@ export default function AppointmentsPage() {
     } catch (error) {
       setError('An error occurred while updating the appointment')
     }
-  }
-
-  const handleLogout = async () => {
-    await signOut({ callbackUrl: '/' })
   }
 
   if (status === 'loading') {
@@ -170,49 +178,20 @@ export default function AppointmentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Activity className="w-8 h-8 text-blue-600" />
-            <h1 className="text-xl font-bold text-gray-900">
-              Hospital Management System
-            </h1>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="text-right">
-              <p className="text-sm font-medium text-gray-900">
-                {session.user.firstName} {session.user.lastName}
-              </p>
-              <p className="text-xs text-gray-500 capitalize">
-                {session.user.role}
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleLogout}
-              className="flex items-center space-x-2"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Logout</span>
-            </Button>
-          </div>
-        </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Appointment Management
+            {isPatient ? 'My Appointments' : 'Appointment Management'}
           </h2>
-          <p className="text-gray-600">Schedule and manage appointments</p>
+          <p className="text-gray-600">
+            {isPatient ? 'View and manage your scheduled appointments' : 'Schedule and manage appointments for all patients'}
+          </p>
         </div>
 
         <div className="bg-white rounded-xl shadow-md p-6 mb-8">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Appointments</h3>
-            {(session.user.role === 'admin' || session.user.role === 'nurse' || session.user.role === 'patient') && (
+            {(isAdminOrNurse || isPatient) && ( // Patients can also schedule their own appointments
               <Button
                 variant="primary"
                 size="md"
@@ -237,51 +216,49 @@ export default function AppointmentsPage() {
               )}
               
               <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {(session.user.role === 'admin' || session.user.role === 'nurse') && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Patient
-                      </label>
-                      <select
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        value={formData.patientId}
-                        onChange={(e) =>
-                          setFormData({ ...formData, patientId: e.target.value })
-                        }
-                        required
-                      >
-                        <option value="">Select Patient</option>
-                        {patients.map(patient => (
-                          <option key={patient._id} value={patient._id}>
-                            {patient.firstName} {patient.lastName} ({patient.email})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Doctor
-                      </label>
-                      <select
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                        value={formData.doctorId}
-                        onChange={(e) =>
-                          setFormData({ ...formData, doctorId: e.target.value })
-                        }
-                        required
-                      >
-                        <option value="">Select Doctor</option>
-                        {doctors.map(doctor => (
-                          <option key={doctor._id} value={doctor._id}>
-                            Dr. {doctor.firstName} {doctor.lastName} ({doctor.specialization})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </>
+                {isAdminOrNurse && ( // Only show patient selection for admin/nurse
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Patient
+                    </label>
+                    <select
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      value={formData.patientId}
+                      onChange={(e) =>
+                        setFormData({ ...formData, patientId: e.target.value })
+                      }
+                      required
+                    >
+                      <option value="">Select Patient</option>
+                      {patients.map((patient: any) => (
+                        <option key={patient._id} value={patient._id}>
+                          {patient.firstName} {patient.lastName} ({patient.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 )}
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Doctor
+                  </label>
+                  <select
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    value={formData.doctorId}
+                    onChange={(e) =>
+                      setFormData({ ...formData, doctorId: e.target.value })
+                    }
+                    required
+                  >
+                    <option value="">Select Doctor</option>
+                    {doctors.map((doctor: any) => (
+                      <option key={doctor._id} value={doctor._id}>
+                        Dr. {doctor.firstName} {doctor.lastName} ({doctor.specialization})
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 
                 <Input
                   label="Date"
@@ -363,9 +340,11 @@ export default function AppointmentsPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Patient
-                    </th>
+                    {!isPatient && ( // Hide Patient column for patients
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Patient
+                      </th>
+                    )}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Doctor
                     </th>
@@ -378,19 +357,23 @@ export default function AppointmentsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
+                    {!isPatient && ( // Hide Actions column for patients
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {appointments.map((appointment) => (
+                  {appointments.map((appointment: any) => (
                     <tr key={appointment._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {appointment.patient?.firstName} {appointment.patient?.lastName}
-                        </div>
-                      </td>
+                      {!isPatient && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {appointment.patient?.firstName} {appointment.patient?.lastName}
+                          </div>
+                        </td>
+                      )}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-500">
                           Dr. {appointment.doctor?.firstName} {appointment.doctor?.lastName}
@@ -415,38 +398,40 @@ export default function AppointmentsPage() {
                           {appointment.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {session.user.role === 'doctor' && appointment.status === 'pending' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="mr-2 text-green-600 hover:text-green-800"
-                            onClick={() => updateAppointmentStatus(appointment._id, 'approved')}
-                          >
-                            Approve
-                          </Button>
-                        )}
-                        {session.user.role === 'doctor' && appointment.status === 'approved' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="mr-2 text-blue-600 hover:text-blue-800"
-                            onClick={() => router.push(`/medical-records?appointmentId=${appointment._id}`)}
-                          >
-                            Start Consultation
-                          </Button>
-                        )}
-                        {(session.user.role === 'admin' || (session.user.role === 'doctor' && ['pending', 'approved'].includes(appointment.status))) && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-red-600 hover:text-red-800"
-                            onClick={() => updateAppointmentStatus(appointment._id, 'cancelled')}
-                          >
-                            Cancel
-                          </Button>
-                        )}
-                      </td>
+                      {!isPatient && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          {isDoctor && appointment.status === 'pending' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mr-2 text-green-600 hover:text-green-800"
+                              onClick={() => updateAppointmentStatus(appointment._id, 'approved')}
+                            >
+                              Approve
+                            </Button>
+                          )}
+                          {isDoctor && appointment.status === 'approved' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="mr-2 text-blue-600 hover:text-blue-800"
+                              onClick={() => router.push(`/medical-records?appointmentId=${appointment._id}`)}
+                            >
+                              Start Consultation
+                            </Button>
+                          )}
+                          {(isAdminOrNurse || (isDoctor && ['pending', 'approved'].includes(appointment.status))) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 hover:text-red-800"
+                              onClick={() => updateAppointmentStatus(appointment._id, 'cancelled')}
+                            >
+                              Cancel
+                            </Button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -461,51 +446,6 @@ export default function AppointmentsPage() {
             </div>
           )}
         </div>
-
-        <div className="grid md:grid-cols-3 gap-6">
-          <DashboardCard
-            icon={<Users className="w-8 h-8" />}
-            title="Patients"
-            description="Manage patient records and profiles"
-            href="/patients"
-          />
-          <DashboardCard
-            icon={<FileText className="w-8 h-8" />}
-            title="Medical Records"
-            description="View and update patient records"
-            href="/medical-records"
-          />
-          <DashboardCard
-            icon={<Pill className="w-8 h-8" />}
-            title="Pharmacy"
-            description="Manage inventory and prescriptions"
-            href="/pharmacy"
-          />
-        </div>
-      </main>
-    </div>
-  )
-}
-
-function DashboardCard({
-  icon,
-  title,
-  description,
-  href,
-}: {
-  icon: React.ReactNode
-  title: string
-  description: string
-  href: string
-}) {
-  return (
-    <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow cursor-pointer">
-      <div className="text-blue-600 mb-4">{icon}</div>
-      <h3 className="text-xl font-semibold text-gray-900 mb-2">{title}</h3>
-      <p className="text-gray-600 text-sm mb-4">{description}</p>
-      <a href={href} className="text-blue-600 hover:underline text-sm font-medium">
-        View details →
-      </a>
     </div>
   )
 }

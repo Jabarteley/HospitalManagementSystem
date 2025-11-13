@@ -3,10 +3,9 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { FileText, Plus, Edit, Trash2, Users, Calendar, Pill, Activity, LogOut } from 'lucide-react'
+import { FileText, Plus, Edit, Trash2, Users, Calendar, Pill, Activity } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
-import { signOut } from 'next-auth/react'
 
 export default function MedicalRecordsPage() {
   const { data: session, status } = useSession()
@@ -28,6 +27,10 @@ export default function MedicalRecordsPage() {
     status: 'open',
   })
   const [error, setError] = useState('')
+
+  const isPatient = session?.user?.role === 'patient'
+  const isAdmin = session?.user?.role === 'admin'
+  const isDoctor = session?.user?.role === 'doctor'
 
   const loadAppointmentDetails = async (appointmentId: string) => {
     try {
@@ -61,26 +64,28 @@ export default function MedicalRecordsPage() {
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/auth/login')
-    } else if (status === 'authenticated' && !['admin', 'doctor'].includes(session.user.role)) {
+    } else if (status === 'authenticated' && !['admin', 'doctor', 'patient'].includes(session.user.role)) {
       router.push('/dashboard')
     }
   }, [status, router, session])
 
   useEffect(() => {
-    if (session?.user?.role && ['admin', 'doctor'].includes(session.user.role)) {
+    if (session?.user?.role) {
       fetchMedicalRecords()
-      fetchPatients()
-      if (session.user.role === 'admin') {
-        fetchDoctors()
-      } else {
-        // If doctor, set their own ID as the doctorId by default
-        setFormData(prev => ({ ...prev, doctorId: session.user.id }))
-      }
-      
-      // Check if there's an appointment ID in the URL to pre-fill the form
-      const appointmentId = searchParams.get('appointmentId')
-      if (appointmentId && session.user.role === 'doctor') {
-        loadAppointmentDetails(appointmentId)
+      if (isAdmin || isDoctor) { // Only fetch patients/doctors if admin or doctor
+        fetchPatients()
+        if (isAdmin) {
+          fetchDoctors()
+        } else if (isDoctor) {
+          // If doctor, set their own ID as the doctorId by default
+          setFormData(prev => ({ ...prev, doctorId: session.user.id }))
+        }
+        
+        // Check if there's an appointment ID in the URL to pre-fill the form
+        const appointmentId = searchParams.get('appointmentId')
+        if (appointmentId && isDoctor) {
+          loadAppointmentDetails(appointmentId)
+        }
       }
     }
   }, [session, searchParams])
@@ -129,7 +134,7 @@ export default function MedicalRecordsPage() {
     }
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
 
@@ -152,7 +157,7 @@ export default function MedicalRecordsPage() {
         setShowCreateForm(false)
         setFormData({
           patientId: '',
-          doctorId: session.user.role === 'doctor' ? session.user.id : '',
+          doctorId: isDoctor ? session.user.id : '',
           visitDate: new Date().toISOString().split('T')[0],
           symptoms: '',
           diagnosis: '',
@@ -175,10 +180,6 @@ export default function MedicalRecordsPage() {
     }
   }
 
-  const handleLogout = async () => {
-    await signOut({ callbackUrl: '/' })
-  }
-
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -190,54 +191,25 @@ export default function MedicalRecordsPage() {
     )
   }
 
-  if (!session || !['admin', 'doctor'].includes(session.user.role)) {
+  if (!session || !['admin', 'doctor', 'patient'].includes(session.user.role)) {
     return null
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <nav className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Activity className="w-8 h-8 text-blue-600" />
-            <h1 className="text-xl font-bold text-gray-900">
-              Hospital Management System
-            </h1>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="text-right">
-              <p className="text-sm font-medium text-gray-900">
-                {session.user.firstName} {session.user.lastName}
-              </p>
-              <p className="text-xs text-gray-500 capitalize">
-                {session.user.role}
-              </p>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleLogout}
-              className="flex items-center space-x-2"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Logout</span>
-            </Button>
-          </div>
-        </div>
-      </nav>
-
-      <main className="max-w-7xl mx-auto px-4 py-8">
+    <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Medical Records Management
+            {isPatient ? 'My Medical Records' : 'Medical Records Management'}
           </h2>
-          <p className="text-gray-600">Handle patient health records and consultations</p>
+          <p className="text-gray-600">
+            {isPatient ? 'View your personal health records' : 'Handle patient health records and consultations'}
+          </p>
         </div>
 
         <div className="bg-white rounded-xl shadow-md p-6 mb-8">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-lg font-semibold text-gray-900">Medical Records</h3>
-            {(session.user.role === 'admin' || session.user.role === 'doctor') && (
+            {!(isPatient) && ( // Only admin and doctor can add records
               <Button
                 variant="primary"
                 size="md"
@@ -275,7 +247,7 @@ export default function MedicalRecordsPage() {
                     required
                   >
                     <option value="">Select Patient</option>
-                    {patients.map(patient => (
+                    {patients.map((patient: any) => (
                       <option key={patient._id} value={patient._id}>
                         {patient.firstName} {patient.lastName} ({patient.email})
                       </option>
@@ -283,7 +255,7 @@ export default function MedicalRecordsPage() {
                   </select>
                 </div>
                 
-                {session.user.role === 'admin' && (
+                {isAdmin && ( // Only show doctor selection for admin
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Doctor
@@ -297,7 +269,7 @@ export default function MedicalRecordsPage() {
                       required
                     >
                       <option value="">Select Doctor</option>
-                      {doctors.map(doctor => (
+                      {doctors.map((doctor: any) => (
                         <option key={doctor._id} value={doctor._id}>
                           Dr. {doctor.firstName} {doctor.lastName} ({doctor.specialization})
                         </option>
@@ -415,9 +387,11 @@ export default function MedicalRecordsPage() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Patient
-                    </th>
+                    {!isPatient && ( // Hide Patient column for patients
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Patient
+                      </th>
+                    )}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Doctor
                     </th>
@@ -433,19 +407,23 @@ export default function MedicalRecordsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
+                    {!(isPatient || isDoctor) && ( // Hide Actions column for patients and doctors
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    )}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {records.map((record) => (
+                  {records.map((record: any) => (
                     <tr key={record._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {record.patient?.firstName} {record.patient?.lastName}
-                        </div>
-                      </td>
+                      {!isPatient && (
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">
+                            {record.patient?.firstName} {record.patient?.lastName}
+                          </div>
+                        </td>
+                      )}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-500">
                           Dr. {record.doctor?.firstName} {record.doctor?.lastName}
@@ -471,21 +449,23 @@ export default function MedicalRecordsPage() {
                           {record.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="mr-2"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </td>
+                      {!(isPatient || isDoctor) && (
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="mr-2"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -500,51 +480,6 @@ export default function MedicalRecordsPage() {
             </div>
           )}
         </div>
-
-        <div className="grid md:grid-cols-3 gap-6">
-          <DashboardCard
-            icon={<Users className="w-8 h-8" />}
-            title="Patients"
-            description="Manage patient records and profiles"
-            href="/patients"
-          />
-          <DashboardCard
-            icon={<Calendar className="w-8 h-8" />}
-            title="Appointments"
-            description="Schedule and manage appointments"
-            href="/appointments"
-          />
-          <DashboardCard
-            icon={<Pill className="w-8 h-8" />}
-            title="Pharmacy"
-            description="Manage inventory and prescriptions"
-            href="/pharmacy"
-          />
-        </div>
-      </main>
-    </div>
-  )
-}
-
-function DashboardCard({
-  icon,
-  title,
-  description,
-  href,
-}: {
-  icon: React.ReactNode
-  title: string
-  description: string
-  href: string
-}) {
-  return (
-    <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-shadow cursor-pointer">
-      <div className="text-blue-600 mb-4">{icon}</div>
-      <h3 className="text-xl font-semibold text-gray-900 mb-2">{title}</h3>
-      <p className="text-gray-600 text-sm mb-4">{description}</p>
-      <a href={href} className="text-blue-600 hover:underline text-sm font-medium">
-        View details →
-      </a>
     </div>
   )
 }

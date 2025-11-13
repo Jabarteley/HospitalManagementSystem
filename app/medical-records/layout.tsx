@@ -17,6 +17,14 @@ export default function MedicalRecordsLayout({
   const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/auth/login')
+    } else if (status === 'authenticated' && !['admin', 'doctor', 'nurse'].includes(session.user.role)) {
+      router.push('/dashboard')
+    }
+  }, [status, router, session])
+
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -28,11 +36,7 @@ export default function MedicalRecordsLayout({
     )
   }
 
-  // If not authenticated or not authorized, redirect
   if (!session || !['admin', 'doctor', 'nurse'].includes(session.user.role)) {
-    if (typeof window !== 'undefined') {
-      router.push('/auth/login')
-    }
     return null
   }
 
